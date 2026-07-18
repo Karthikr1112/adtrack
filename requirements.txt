@@ -1,0 +1,27 @@
+# AdTrack — production dependencies
+# Install with: pip install -r requirements.txt
+
+# Core
+Django==5.2.16
+python-decouple==3.8
+
+# Admin theme
+django-jazzmin==3.0.5
+
+# Excel export
+openpyxl==3.1.5
+
+# Image handling (ImageField + upload compression)
+pillow==12.3.0
+
+# GPS distance check for placement photo verification
+geopy==2.5.0
+
+# StyleHR login API calls
+requests==2.34.2
+
+# Production server (Linux) — not used on Windows dev
+gunicorn==23.0.0
+
+# MySQL driver (Linux production; needs: apt install libmysqlclient-dev build-essential python3-dev)
+mysqlclient==2.2.7
