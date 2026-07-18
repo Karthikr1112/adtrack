@@ -1,0 +1,460 @@
+{% extends 'base.html' %}
+{% block title %}Sign In · AdTrack{% endblock %}
+
+{% block guest_content %}
+<style>
+    .login-page {
+        min-height: 100vh;
+        width: 100%;
+        display: flex;
+        background: #f1f5f9;
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    /* ============ LEFT BRAND PANEL ============ */
+    .brand-panel {
+        flex: 1 1 52%;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 3rem 3.5rem;
+        color: #fff;
+        background:
+            radial-gradient(900px 500px at -10% -10%, rgba(139, 92, 246, 0.45), transparent 60%),
+            radial-gradient(800px 600px at 110% 110%, rgba(56, 189, 248, 0.35), transparent 55%),
+            linear-gradient(150deg, #1e1b4b 0%, #312e81 55%, #1e3a8a 100%);
+        overflow: hidden;
+    }
+
+    .brand-panel::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px);
+        background-size: 26px 26px;
+        pointer-events: none;
+    }
+
+    .brand-panel > * { position: relative; z-index: 2; }
+
+    .brand-mark {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .brand-mark .logo-box {
+        width: 44px;
+        height: 44px;
+        border-radius: 0.9rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #818cf8, #6366f1);
+        box-shadow: 0 8px 20px -6px rgba(99, 102, 241, 0.7);
+        font-size: 1.35rem;
+    }
+
+    .brand-mark .brand-name {
+        font-size: 1.35rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+
+    .brand-hero h1 {
+        font-size: clamp(1.8rem, 3vw, 2.6rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.15;
+        margin-bottom: 1rem;
+    }
+
+    .brand-hero h1 .accent {
+        background: linear-gradient(90deg, #a5b4fc, #67e8f9);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+
+    .brand-hero p {
+        color: rgba(226, 232, 240, 0.85);
+        font-size: 1.02rem;
+        max-width: 34rem;
+        line-height: 1.7;
+        margin-bottom: 2.25rem;
+    }
+
+    .feature-list { display: grid; gap: 1rem; max-width: 34rem; }
+
+    .feature-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.9rem;
+        padding: 0.9rem 1.1rem;
+        border-radius: 0.9rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        backdrop-filter: blur(6px);
+    }
+
+    .feature-item .f-icon {
+        flex: 0 0 auto;
+        width: 38px;
+        height: 38px;
+        border-radius: 0.7rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.05rem;
+        background: rgba(129, 140, 248, 0.25);
+        color: #c7d2fe;
+    }
+
+    .feature-item h6 { margin: 0 0 0.15rem; font-weight: 700; font-size: 0.95rem; color: #eef2ff; }
+    .feature-item small { color: rgba(203, 213, 225, 0.8); font-size: 0.82rem; line-height: 1.5; }
+
+    .brand-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: rgba(203, 213, 225, 0.65);
+        font-size: 0.8rem;
+    }
+
+    .brand-footer .secure-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.8rem;
+        border-radius: 2rem;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.05);
+    }
+
+    /* ============ RIGHT FORM PANEL ============ */
+    .form-panel {
+        flex: 1 1 48%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2.5rem 1.5rem;
+        background: #ffffff;
+        position: relative;
+    }
+
+    .form-wrap { width: 100%; max-width: 400px; animation: rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+    @keyframes rise {
+        from { opacity: 0; transform: translateY(18px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-head { margin-bottom: 2rem; text-align: center; }
+    .form-head .mobile-brand {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+        margin-bottom: 1.5rem;
+        color: #0f172a;
+        font-weight: 800;
+        font-size: 1.2rem;
+    }
+    .form-head .mobile-brand .logo-box {
+        width: 40px;
+        height: 40px;
+        border-radius: 0.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #818cf8, #6366f1);
+        color: #fff;
+        font-size: 1.15rem;
+        box-shadow: 0 8px 18px -6px rgba(99, 102, 241, 0.6);
+    }
+    .form-head h2 {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.4rem;
+    }
+    .form-head p { color: #64748b; font-size: 0.95rem; margin: 0; }
+
+    .field-label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 0.45rem;
+        letter-spacing: 0.01em;
+    }
+
+    .input-shell { position: relative; margin-bottom: 1.25rem; }
+
+    .input-shell .lead-icon {
+        position: absolute;
+        left: 0.95rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 1.05rem;
+        pointer-events: none;
+        transition: color 0.2s ease;
+    }
+
+    .pro-input {
+        width: 100%;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 0.7rem;
+        background: #f8fafc;
+        color: #0f172a;
+        font-size: 0.98rem;
+        padding: 0.8rem 2.9rem 0.8rem 2.7rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .pro-input::placeholder { color: #94a3b8; }
+
+    .pro-input:focus {
+        outline: none;
+        background: #fff;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+    }
+
+    .pro-input:focus ~ .lead-icon { color: #6366f1; }
+
+    .toggle-pass {
+        position: absolute;
+        right: 0.6rem;
+        top: 50%;
+        transform: translateY(-50%);
+        border: none;
+        background: transparent;
+        color: #94a3b8;
+        padding: 0.35rem 0.5rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-size: 1.05rem;
+        line-height: 1;
+    }
+    .toggle-pass:hover { color: #6366f1; background: #eef2ff; }
+
+    .btn-signin {
+        width: 100%;
+        border: none;
+        border-radius: 0.7rem;
+        padding: 0.85rem 1rem;
+        margin-top: 0.5rem;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        color: #fff;
+        background: linear-gradient(135deg, #6366f1, #7c3aed);
+        box-shadow: 0 10px 22px -8px rgba(99, 102, 241, 0.65);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .btn-signin:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: 0 14px 28px -8px rgba(99, 102, 241, 0.7); }
+    .btn-signin:active { transform: translateY(0); }
+    .btn-signin:disabled { opacity: 0.75; cursor: wait; transform: none; }
+
+    .helper-row {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        margin-top: 1.4rem;
+        padding: 0.85rem 1rem;
+        border-radius: 0.7rem;
+        background: #f8fafc;
+        border: 1px solid #eef2f7;
+        color: #64748b;
+        font-size: 0.83rem;
+        line-height: 1.55;
+    }
+    .helper-row i { color: #6366f1; font-size: 1rem; flex: 0 0 auto; }
+
+    .form-footer {
+        margin-top: 2.25rem;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 0.78rem;
+    }
+
+    /* Alerts */
+    .login-alerts { margin-bottom: 1.4rem; }
+    .login-alerts .custom-alert {
+        border-radius: 0.7rem;
+        font-weight: 500;
+        font-size: 0.9rem;
+        box-shadow: 0 8px 18px -8px rgba(15, 23, 42, 0.15);
+    }
+    .custom-alert.alert-error, .custom-alert.alert-danger {
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        background-color: #fef2f2 !important;
+        color: #b91c1c !important;
+    }
+    .custom-alert.alert-info, .custom-alert.alert-success {
+        border: 1px solid rgba(34, 197, 94, 0.25);
+        background-color: #f0fdf4 !important;
+        color: #15803d !important;
+    }
+
+    /* ============ RESPONSIVE ============ */
+    @media (max-width: 991.98px) {
+        .brand-panel { display: none; }
+        .form-panel {
+            background:
+                radial-gradient(700px 400px at -10% -10%, rgba(139, 92, 246, 0.12), transparent 60%),
+                radial-gradient(700px 500px at 110% 110%, rgba(56, 189, 248, 0.12), transparent 55%),
+                #f8fafc;
+        }
+        .form-wrap {
+            background: #fff;
+            border: 1px solid #eef2f7;
+            border-radius: 1.25rem;
+            padding: 2.25rem 1.75rem;
+            box-shadow: 0 20px 45px -18px rgba(15, 23, 42, 0.18);
+        }
+    }
+</style>
+
+<div class="login-page">
+
+    <!-- Left: brand / product content -->
+    <aside class="brand-panel">
+        <div class="brand-mark">
+            <div class="logo-box"><i class="bi bi-badge-ad-fill"></i></div>
+            <span class="brand-name">AdTrack</span>
+        </div>
+
+        <div class="brand-hero">
+            <h1>Every banner, every rupee —<br><span class="accent">tracked in one place.</span></h1>
+            <p>AdTrack is your team's outdoor marketing command center. Plan campaigns, verify on-ground placements, and keep spending transparent — from print to takedown.</p>
+
+            <div class="feature-list">
+                <div class="feature-item">
+                    <div class="f-icon"><i class="bi bi-geo-alt-fill"></i></div>
+                    <div>
+                        <h6>GPS-verified placements</h6>
+                        <small>Site photos are checked against the claimed location, so you know your banners are really up.</small>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="f-icon"><i class="bi bi-cash-stack"></i></div>
+                    <div>
+                        <h6>Complete cost visibility</h6>
+                        <small>Printing, installation and rental costs with bills attached — dashboards and Excel exports in one click.</small>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <div class="f-icon"><i class="bi bi-people-fill"></i></div>
+                    <div>
+                        <h6>Role-based team access</h6>
+                        <small>Admins, managers and field staff each see exactly what they need — nothing more.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="brand-footer">
+            <span>© {% now "Y" %} AdTrack · Marketing Tracker</span>
+            <span class="secure-badge"><i class="bi bi-shield-lock-fill"></i> Secured company access</span>
+        </div>
+    </aside>
+
+    <!-- Right: sign-in form -->
+    <main class="form-panel">
+        <div class="form-wrap">
+
+            <div class="form-head">
+                <div class="mobile-brand">
+                    <span class="logo-box"><i class="bi bi-badge-ad-fill"></i></span>
+                    AdTrack
+                </div>
+                <h2>Welcome back</h2>
+                <p>Sign in with your company credentials to continue.</p>
+            </div>
+
+            {% if messages %}
+            <div class="login-alerts">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show custom-alert" role="alert">
+                    {% if message.tags == 'error' or message.tags == 'danger' %}
+                    <i class="bi bi-exclamation-octagon-fill me-2"></i>
+                    {% else %}
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form method="post" novalidate id="loginForm">
+                {% csrf_token %}
+
+                <label class="field-label" for="username">Email or Employee ID</label>
+                <div class="input-shell">
+                    <input type="text" class="pro-input" id="username" name="username"
+                           placeholder="you@company.com" autocomplete="username" required autofocus>
+                    <i class="bi bi-person lead-icon"></i>
+                </div>
+
+                <label class="field-label" for="password">Password</label>
+                <div class="input-shell">
+                    <input type="password" class="pro-input" id="password" name="password"
+                           placeholder="Enter your password" autocomplete="current-password" required>
+                    <i class="bi bi-lock lead-icon"></i>
+                    <button type="button" class="toggle-pass" id="togglePass" aria-label="Show password" tabindex="-1">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+
+                <button type="submit" class="btn-signin" id="signinBtn">
+                    <span id="signinLabel">Sign In</span>
+                    <i class="bi bi-arrow-right" id="signinArrow"></i>
+                </button>
+            </form>
+
+            <div class="helper-row">
+                <i class="bi bi-info-circle-fill"></i>
+                <span>New here? Sign in once with your company credentials — your account is created automatically and activated after admin approval.</span>
+            </div>
+
+            <div class="form-footer">
+                Trouble signing in? Contact your administrator.
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // Show / hide password
+    const toggleBtn = document.getElementById('togglePass');
+    const passInput = document.getElementById('password');
+    toggleBtn.addEventListener('click', function () {
+        const showing = passInput.type === 'text';
+        passInput.type = showing ? 'password' : 'text';
+        this.querySelector('i').className = showing ? 'bi bi-eye' : 'bi bi-eye-slash';
+        this.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+    });
+
+    // Prevent double submit + give feedback while the HR API is contacted
+    document.getElementById('loginForm').addEventListener('submit', function () {
+        const btn = document.getElementById('signinBtn');
+        if (btn.disabled) return;
+        btn.disabled = true;
+        document.getElementById('signinLabel').textContent = 'Signing in…';
+        document.getElementById('signinArrow').className = 'spinner-border spinner-border-sm';
+    });
+</script>
+{% endblock %}

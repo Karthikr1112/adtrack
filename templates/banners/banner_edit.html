@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block title %}Edit Banner · AdTrack{% endblock %}
+{% block page_title %}Edit Banner{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-3">
+                <li class="breadcrumb-item"><a href="{% url 'banner_list' %}" class="text-decoration-none">Banners</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'banner_detail' banner.pk %}" class="text-decoration-none">{{ banner.poster_name }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Edit</li>
+            </ol>
+        </nav>
+
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            
+            <!-- Banner Details Card -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold text-primary">
+                        <i class="bi bi-info-circle me-2"></i>1. Banner Details
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        {% for field in form %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary small">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                            {{ field }}
+                            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Placement Details Card -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold text-primary">
+                        <i class="bi bi-geo-alt-fill me-2"></i>2. Placement Details
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        {% for field in placement_form %}
+                        {% if field.name == 'location_name' or field.name == 'address' %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary small">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% elif field.name == 'latitude' or field.name == 'longitude' %}
+                            {{ field }}
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3 p-3 border rounded bg-light">
+                        <label class="form-label small fw-semibold mb-2 text-dark">
+                            <i class="bi bi-camera-fill me-1"></i>Take a Live Photo of this Location
+                        </label>
+                        <input type="file" name="site_photo" accept="image/*" capture="environment" class="form-control form-control-sm">
+                        <div class="form-text">Opens your camera to capture a live photo — used to verify the placement location.</div>
+                        <input type="hidden" name="site_photo_latitude" data-geo="lat">
+                        <input type="hidden" name="site_photo_longitude" data-geo="lng">
+                        <input type="hidden" name="latitude" data-geo="lat">
+                        <input type="hidden" name="longitude" data-geo="lng">
+                    </div>
+
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-outline-secondary btn-sm capture-gps-btn">
+                            <i class="bi bi-crosshair me-1"></i>Capture Current GPS Location
+                        </button>
+                        <span class="ms-2 small text-muted gps-status"></span>
+                    </div>
+
+                    <div class="row">
+                        {% for field in placement_form %}
+                        {% if field.name == 'placed_date' or field.name == 'removal_date' %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary small">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cost Details Card -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-bold text-primary">
+                        <i class="bi bi-currency-rupee me-2"></i>3. Cost Details
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        {% for field in cost_form %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary small">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            {% if form.non_field_errors or placement_form.non_field_errors or cost_form.non_field_errors %}
+            <div class="alert alert-danger mb-4">
+                {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
+                {% if placement_form.non_field_errors %}{{ placement_form.non_field_errors }}{% endif %}
+                {% if cost_form.non_field_errors %}{{ cost_form.non_field_errors }}{% endif %}
+            </div>
+            {% endif %}
+
+            <div class="d-flex justify-content-end gap-2 mb-5">
+                <a href="{% url 'banner_detail' banner.pk %}" class="btn btn-outline-secondary">
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-success px-4">
+                    Save All Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

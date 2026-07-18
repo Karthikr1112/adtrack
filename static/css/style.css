@@ -1,0 +1,269 @@
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f6f9;
+    margin: 0;
+}
+
+/* ---------- App shell / sidebar ---------- */
+.app-shell {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background-color: #e8f1f3;
+    color: #34495e;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    border-right: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.1rem 1.25rem;
+    font-weight: 600;
+    color: #1f1f1f;
+    font-size: 1.05rem;
+    border-bottom: 1px solid #dce6f1;
+}
+
+.sidebar-brand i {
+    color: #0d6efd;
+    font-size: 1.3rem;
+}
+
+.sidebar-nav {
+    flex-grow: 1;
+    padding: 0.75rem 0.6rem;
+    overflow-y: auto;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.6rem 0.85rem;
+    border-radius: 0.5rem;
+    color: #34495e;
+    text-decoration: none;
+    font-size: 0.92rem;
+    margin-bottom: 0.15rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    font-weight: 500;
+}
+
+.sidebar-link i {
+    font-size: 1.05rem;
+    width: 1.2rem;
+    text-align: center;
+}
+
+.sidebar-link:hover {
+    background-color: rgba(13, 110, 253, 0.06);
+    color: #0d6efd;
+}
+
+.sidebar-link.active {
+    background-color: #0d6efd;
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 4px 6px -1px rgba(13, 110, 253, 0.2), 0 2px 4px -1px rgba(13, 110, 253, 0.1);
+}
+
+.sidebar-user {
+    padding: 0.9rem 1rem 1.1rem;
+    border-top: 1px solid #dce6f1;
+}
+
+.logout-link {
+    padding: 0.5rem 0.6rem;
+}
+
+.app-main {
+    flex-grow: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-topbar {
+    background: #fff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    min-height: 60px;
+}
+
+.app-content {
+    padding: 1.5rem;
+    flex-grow: 1;
+}
+
+/* ---------- Sidebar overlay backdrop (mobile) ---------- */
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 1049;
+}
+.sidebar-backdrop.show { display: block; }
+
+/* ---------- Mobile: sidebar as drawer ---------- */
+@media (max-width: 991.98px) {
+    .sidebar {
+        position: fixed;
+        left: -240px;
+        z-index: 1050;
+        transition: left 0.25s ease;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.15);
+    }
+    .sidebar.open {
+        left: 0;
+    }
+
+    /* Topbar: title stays, header actions scroll horizontally */
+    .app-topbar {
+        padding: 0.6rem 1rem;
+        flex-wrap: nowrap;
+        overflow: hidden;
+    }
+
+    .topbar-header-actions {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        flex-wrap: nowrap !important;
+        padding-bottom: 2px;
+    }
+    .topbar-header-actions::-webkit-scrollbar { display: none; }
+
+    .app-content {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .app-content {
+        padding: 0.75rem;
+    }
+
+    /* Stack page header rows on tiny screens */
+    .page-header-row {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 0.75rem;
+    }
+
+    /* Topbar filter: compact text */
+    .topbar-filter .form-control,
+    .topbar-filter .form-select {
+        font-size: 0.78rem;
+    }
+}
+
+/* ---------- Mobile card-based table rows ---------- */
+@media (max-width: 767.98px) {
+    /* Certain table columns hidden on mobile */
+    .col-mobile-hide {
+        display: none !important;
+    }
+}
+
+/* ---------- Cards / tables ---------- */
+.card {
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 0.75rem;
+}
+
+.form-control,
+.form-select {
+    background-color: #fafbfc;
+    border-radius: 0.5rem;
+    border-color: #e2e8f0;
+    padding: 0.55rem 0.85rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: #fff;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.12);
+}
+
+.form-label {
+    font-size: 0.9rem;
+}
+
+/* ---------- Wizard step pills ---------- */
+.wizard-steps {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.wizard-steps .nav-link {
+    border-radius: 2rem;
+    padding: 0.55rem 1.1rem;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #5c677d;
+    background-color: #eef2f7;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+}
+
+.wizard-steps .nav-link.active {
+    background-color: #0d6efd;
+    color: #fff;
+    box-shadow: 0 4px 10px -2px rgba(13, 110, 253, 0.35);
+}
+
+.wizard-steps .nav-link.text-success {
+    background-color: #e8f8ee;
+    color: #198754 !important;
+}
+
+.wizard-steps .nav-link:hover:not(.active) {
+    background-color: #e2eaf3;
+    color: #0d6efd;
+}
+
+.table thead th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #6c757d;
+}
+
+.breadcrumb {
+    background: none;
+    padding: 0;
+}
+
+/* ---------- In-page tabs ---------- */
+.nav-tabs .nav-link {
+    color: #495057;
+}
+
+.nav-tabs .nav-link.active {
+    font-weight: 600;
+}
+
+.sidebar-footer {
+    border-top: 1px solid #dce6f1;
+    margin-top: auto;
+}

@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% block title %}Add Banner · AdTrack{% endblock %}
+{% block page_title %}Add Banner{% endblock %}
+{% block content %}
+
+<div class="mb-4">
+    <h4 class="mb-1 text-dark fw-bold">Add Banner</h4>
+    <p class="text-muted small mb-0">Create a banner, then optionally record its placement and cost — all in one flow.</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+
+        {# ---- Step indicator ---- #}
+        <ul class="nav wizard-steps mb-4">
+            <li class="nav-item">
+                <a class="nav-link {% if wizard_step == 'banner' %}active{% endif %} {% if wizard_banner %}text-success{% endif %}" href="{% url 'banner_add' %}">
+                    {% if wizard_banner %}<i class="bi bi-check-circle-fill me-1"></i>{% endif %}1. Banner Details
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if wizard_step == 'placement' %}active{% endif %}" href="?step=placement{% if wizard_banner %}&banner_id={{ wizard_banner.id }}{% endif %}">2. Add Placement</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if wizard_step == 'cost' %}active{% endif %}" href="?step=cost{% if wizard_banner %}&banner_id={{ wizard_banner.id }}{% endif %}">3. Add Cost</a>
+            </li>
+        </ul>
+
+        {# ---- Step 1: Banner Details ---- #}
+        {% if wizard_step == 'banner' %}
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" action="{% url 'banner_add' %}" novalidate>
+                    {% csrf_token %}
+                    <div class="row">
+                        {% for field in form %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                            {{ field }}
+                            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+                    <div class="d-flex justify-content-end gap-2 pt-2 border-top mt-4">
+                        <button type="submit" class="btn btn-primary px-4">
+                            Save &amp; Continue<i class="bi bi-arrow-right ms-1"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {# ---- Step 2: Add Placement ---- #}
+        {% elif wizard_step == 'placement' %}
+        {% if wizard_banner %}
+        <div class="alert alert-success small d-flex align-items-center">
+            <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+            <span>Banner <strong>{{ wizard_banner.poster_name }}</strong> created. Add its first placement below, or skip for now.</span>
+        </div>
+        {% endif %}
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" action="{% if wizard_banner %}{% url 'add_placement' wizard_banner.id %}{% else %}{% url 'banner_add' %}{% endif %}" class="placement-form" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+                    <input type="hidden" name="wizard" value="1">
+                    <div class="row">
+                        {% for field in placement_form %}
+                        {% if field.name == 'location_name' or field.name == 'address' %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% elif field.name == 'latitude' or field.name == 'longitude' %}
+                            {{ field }}
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3 p-3 border rounded-3" style="background-color: #fafbfc;">
+                        <label class="form-label small fw-semibold mb-2 text-dark">
+                            <i class="bi bi-camera-fill me-1 text-primary"></i>Take a Live Photo of this Location
+                        </label>
+                        <input type="file" name="site_photo" accept="image/*" capture="environment" class="form-control form-control-sm">
+                        <div class="form-text">Opens your camera to capture a live photo — used to verify the placement location.</div>
+                        <input type="hidden" name="site_photo_latitude" data-geo="lat">
+                        <input type="hidden" name="site_photo_longitude" data-geo="lng">
+                        <input type="hidden" name="latitude" data-geo="lat">
+                        <input type="hidden" name="longitude" data-geo="lng">
+                    </div>
+
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-outline-secondary btn-sm capture-gps-btn">
+                            <i class="bi bi-crosshair me-1"></i>Capture Current GPS Location
+                        </button>
+                        <span class="ms-2 small text-muted gps-status"></span>
+                    </div>
+
+                    <div class="row">
+                        {% for field in placement_form %}
+                        {% if field.name == 'placed_date' or field.name == 'removal_date' %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-flex justify-content-between gap-2 pt-2 border-top mt-4">
+                        <a href="?step=cost{% if wizard_banner %}&banner_id={{ wizard_banner.id }}{% endif %}" class="btn btn-outline-secondary">
+                            Skip this step<i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                        <button type="submit" class="btn btn-primary px-4">
+                            Save &amp; Continue<i class="bi bi-arrow-right ms-1"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {# ---- Step 3: Add Cost ---- #}
+        {% elif wizard_step == 'cost' %}
+        {% if wizard_banner %}
+        <div class="alert alert-success small d-flex align-items-center">
+            <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+            <span>Now add cost details for <strong>{{ wizard_banner.poster_name }}</strong>, or skip and finish.</span>
+        </div>
+        {% endif %}
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" action="{% if wizard_banner %}{% url 'add_cost' wizard_banner.id %}{% else %}{% url 'banner_add' %}{% endif %}" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+                    <input type="hidden" name="wizard" value="1">
+                    <div class="row">
+                        {% for field in cost_form %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                            {{ field }}
+                            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="d-flex justify-content-between gap-2 pt-2 border-top mt-4">
+                        <a href="?step=placement{% if wizard_banner %}&banner_id={{ wizard_banner.id }}{% endif %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Back
+                        </a>
+                        <div class="d-flex gap-2">
+                            {% if wizard_banner %}
+                            <a href="{% url 'banner_detail' wizard_banner.id %}" class="btn btn-outline-secondary">
+                                Skip &amp; Finish
+                            </a>
+                            {% endif %}
+                            <button type="submit" class="btn btn-success px-4">
+                                <i class="bi bi-check-circle me-1"></i>Save &amp; Finish
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}User Management - AdTrack - {{ block.super }}{% endblock %}
+
+{% block page_title %}User Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- User List Section -->
+    <div class="col-lg-12">
+        <div class="card border shadow-sm" style="border-radius: 0.75rem; background-color: #ffffff;">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-dark fs-6">
+                    <i class="bi bi-people-fill me-2 text-primary"></i>Active Accounts
+                </span>
+                <div class="d-inline-flex gap-2">
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill d-flex align-items-center px-2.5 fw-semibold" style="font-size: 0.75rem;">
+                        Total: {{ users|length }}
+                    </span>
+                    <a href="{% url 'user_add' %}" class="btn btn-primary btn-sm fw-semibold d-flex align-items-center gap-1.5 px-3 py-1.5" style="border-radius: 0.375rem;">
+                        <i class="bi bi-person-plus-fill"></i> Add User
+                    </a>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr class="table-light text-secondary-emphasis" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
+                            <th class="ps-4 py-3">User</th>
+                            <th class="py-3 col-mobile-hide">Full Name</th>
+                            <th class="py-3">Role</th>
+                            <th class="py-3 col-mobile-hide">Department</th>
+                            <th class="py-3">Status</th>
+                            <th class="pe-4 py-3 text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr {% if not u.is_active %}class="table-warning bg-warning bg-opacity-10"{% endif %}>
+                            <td class="ps-4 py-3.5">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" 
+                                         style="width: 38px; height: 38px; background: linear-gradient(135deg, {% if not u.is_active %}#ffc107, #fd7e14{% else %}#0d6efd, #0b5ed7{% endif %});">
+                                        {{ u.username|slice:":1"|upper }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark lh-sm">
+                                            {{ u.username }}
+                                            {% if not u.is_active %}<i class="bi bi-exclamation-circle-fill text-warning ms-1" title="Needs Approval"></i>{% endif %}
+                                        </div>
+                                        <div class="text-secondary small mt-0.5" style="font-size: 0.75rem;">{{ u.email|default:"No email" }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3.5 text-secondary fw-semibold col-mobile-hide">
+                                {% if u.first_name or u.last_name %}
+                                    {{ u.first_name }} {{ u.last_name }}
+                                {% else %}
+                                    <span class="text-muted font-monospace" style="font-size: 0.85rem;">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3.5">
+                                {% if not u.is_active or not u.profile.role %}
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1 rounded-pill" style="font-size: 0.75rem; font-weight: 600;">
+                                        Pending Role
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2.5 py-1 rounded-pill" style="font-size: 0.75rem; font-weight: 600;">
+                                        {{ u.profile.role.name|title }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3.5 text-secondary col-mobile-hide">
+                                <div class="lh-sm">{% if u.profile %}{{ u.profile.department|default:"—" }}{% else %}—{% endif %}</div>
+                                {% if u.profile and u.profile.phone_number %}
+                                    <div class="text-secondary small mt-0.5" style="font-size: 0.75rem;"><i class="bi bi-telephone me-1"></i>{{ u.profile.phone_number }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="py-3.5">
+                                {% if u.is_active %}
+                                    <span class="badge bg-success text-white px-2 py-1 rounded-pill" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Active</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark px-2 py-1 rounded-pill shadow-sm" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;"><i class="bi bi-bell-fill me-1"></i>Pending Approval</span>
+                                {% endif %}
+                            </td>
+                            <td class="pe-4 py-3.5 text-end">
+                                <div class="d-inline-flex gap-2">
+                                    <a href="{% url 'user_edit' u.id %}" class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center p-1.5" style="border-radius: 0.375rem; width: 32px; height: 32px;" title="Edit Account">
+                                        <i class="bi bi-pencil-fill" style="font-size: 0.85rem;"></i>
+                                    </a>
+                                    {% if u.id != request.user.id %}
+                                    <form action="{% url 'user_delete' u.id %}" method="POST" onsubmit="return confirm('Are you sure you want to delete user \'{{ u.username }}\'? This action cannot be undone.');" class="d-inline-block">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center p-1.5" style="border-radius: 0.375rem; width: 32px; height: 32px;" title="Delete Account">
+                                            <i class="bi bi-trash3-fill" style="font-size: 0.85rem;"></i>
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <button class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center p-1.5 disabled" style="border-radius: 0.375rem; width: 32px; height: 32px; opacity: 0.4;" title="Cannot delete yourself">
+                                        <i class="bi bi-trash3-fill" style="font-size: 0.85rem;"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

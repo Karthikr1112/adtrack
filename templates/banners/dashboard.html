@@ -1,0 +1,794 @@
+{% extends 'base.html' %}
+{% load banner_extras %}
+{% block title %}Dashboard · AdTrack{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+/* Custom flatpickr styling to match screen design */
+.flatpickr-calendar {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 1rem !important;
+    font-family: 'Inter', sans-serif !important;
+    padding: 8px !important;
+    background: #ffffff !important;
+    z-index: 9999 !important;
+}
+.flatpickr-day.selected, 
+.flatpickr-day.startRange, 
+.flatpickr-day.endRange, 
+.flatpickr-day.selected.inRange, 
+.flatpickr-day.startRange.inRange, 
+.flatpickr-day.endRange.inRange, 
+.flatpickr-day.selected:focus, 
+.flatpickr-day.startRange:focus, 
+.flatpickr-day.endRange:focus, 
+.flatpickr-day.selected:hover, 
+.flatpickr-day.startRange:hover, 
+.flatpickr-day.endRange:hover {
+    background: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: #ffffff !important;
+}
+.flatpickr-day.inRange {
+    background: rgba(13, 110, 253, 0.08) !important;
+    border-color: transparent !important;
+    box-shadow: -5px 0 0 rgba(13, 110, 253, 0.08), 5px 0 0 rgba(13, 110, 253, 0.08) !important;
+    border-radius: 0 !important;
+}
+.flatpickr-day.startRange {
+    border-top-left-radius: 50px !important;
+    border-bottom-left-radius: 50px !important;
+}
+.flatpickr-day.endRange {
+    border-top-right-radius: 50px !important;
+    border-bottom-right-radius: 50px !important;
+}
+.flatpickr-months .flatpickr-month {
+    color: #1e293b !important;
+    font-weight: 700 !important;
+}
+.flatpickr-current-month .flatpickr-monthDropdown-months {
+    font-weight: 700 !important;
+}
+.flatpickr-current-month input.cur-year {
+    font-weight: 700 !important;
+}
+.flatpickr-day {
+    border-radius: 50px !important;
+    font-weight: 500 !important;
+}
+.flatpickr-day.flatpickr-disabled, 
+.flatpickr-day.flatpickr-disabled:hover {
+    color: #cbd5e1 !important;
+}
+.flatpickr-weekday {
+    font-weight: 600 !important;
+    color: #64748b !important;
+}
+/* Topbar filter inputs — slimmer height to fit inside header */
+.topbar-filter .form-control,
+.topbar-filter .form-select {
+    height: 34px;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: 0.82rem;
+}
+.topbar-filter .input-group {
+    height: 34px;
+}
+
+/* Premium KPI Cards */
+.kpi-card {
+    border-radius: 1.25rem;
+    background: #ffffff;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    box-shadow: 0 10px 25px -10px rgba(15, 23, 42, 0.05), inset 0 -2px 0 0 rgba(0,0,0,0.02);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 1.75rem;
+    z-index: 1;
+}
+
+.kpi-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 35px -10px rgba(15, 23, 42, 0.1), inset 0 -2px 0 0 rgba(0,0,0,0.01);
+    border-color: rgba(226, 232, 240, 1);
+}
+
+.kpi-content {
+    position: relative;
+    z-index: 2;
+}
+
+.kpi-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #64748b;
+    margin-bottom: 0.4rem;
+    display: block;
+}
+
+.kpi-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+.kpi-icon-box {
+    width: 60px;
+    height: 60px;
+    border-radius: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.kpi-card:hover .kpi-icon-box {
+    transform: scale(1.15) rotate(5deg);
+}
+
+.kpi-icon-box i {
+    font-size: 1.6rem;
+}
+
+/* Color Variations */
+.kpi-card.blue .kpi-icon-box {
+    background: linear-gradient(135deg, #eff6ff, #bfdbfe);
+    color: #2563eb;
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.1), 0 8px 16px -6px rgba(59, 130, 246, 0.3);
+}
+.kpi-card.green .kpi-icon-box {
+    background: linear-gradient(135deg, #f0fdf4, #bbf7d0);
+    color: #16a34a;
+    box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.1), 0 8px 16px -6px rgba(34, 197, 94, 0.3);
+}
+.kpi-card.yellow .kpi-icon-box {
+    background: linear-gradient(135deg, #fffbeb, #fef08a);
+    color: #d97706;
+    box-shadow: inset 0 0 0 1px rgba(234, 179, 8, 0.1), 0 8px 16px -6px rgba(234, 179, 8, 0.3);
+}
+.kpi-card.purple .kpi-icon-box {
+    background: linear-gradient(135deg, #faf5ff, #e9d5ff);
+    color: #9333ea;
+    box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.1), 0 8px 16px -6px rgba(168, 85, 247, 0.3);
+}
+
+/* Decorative background glowing orb inside card */
+.kpi-decoration {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    filter: blur(35px);
+    z-index: 0;
+    opacity: 0.15;
+    bottom: -40px;
+    right: -40px;
+    transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
+}
+
+.kpi-card:hover .kpi-decoration {
+    transform: scale(1.6);
+    opacity: 0.25;
+}
+
+.kpi-card.blue .kpi-decoration { background: #3b82f6; }
+.kpi-card.green .kpi-decoration { background: #22c55e; }
+.kpi-card.yellow .kpi-decoration { background: #eab308; }
+.kpi-card.purple .kpi-decoration { background: #a855f7; }
+}
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<form method="GET" class="topbar-filter d-flex align-items-center gap-2 flex-nowrap">
+    <!-- Search Input -->
+    <div class="input-group input-group-sm rounded-pill border bg-white px-2 align-items-center" style="width: 190px;">
+        <span class="bg-transparent border-0 text-secondary pe-1">
+            <i class="bi bi-search" style="font-size: 0.8rem;"></i>
+        </span>
+        <input type="text" name="q" class="form-control border-0 bg-transparent py-0" style="box-shadow: none;" value="{{ search_query }}" placeholder="Search poster...">
+    </div>
+
+    <!-- Date Range Picker -->
+    <div class="input-group input-group-sm rounded-pill border bg-white px-2 align-items-center" style="width: 210px;">
+        <span class="bg-transparent border-0 text-secondary pe-1">
+            <i class="bi bi-calendar3" style="font-size: 0.8rem;"></i>
+        </span>
+        <input type="text" name="date_range" id="date_range_picker" class="form-control border-0 bg-transparent py-0" style="box-shadow: none;" value="{{ date_range }}" placeholder="Select Date Range">
+    </div>
+
+    <!-- Status Dropdown -->
+    <select name="status" class="form-select form-select-sm rounded-pill px-3" style="width: 160px; border-color: #dee2e6; color: #475569;">
+        <option value="all" {% if selected_status == 'all' %}selected{% endif %}>All Statuses</option>
+        {% for val, label in status_choices %}
+            <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+
+    <!-- Filter Buttons -->
+    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold flex-shrink-0" style="height: 34px; font-size: 0.82rem;">Filter</button>
+    <a href="{% url 'dashboard' %}" class="btn btn-link btn-sm text-secondary text-decoration-none fw-semibold flex-shrink-0 px-1" style="font-size: 0.82rem;">Reset</a>
+</form>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <!-- Total Banners -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="kpi-card blue">
+            <div class="kpi-content">
+                <span class="kpi-title">Total Banners</span>
+                <h3 class="kpi-value">{{ total_banners }}</h3>
+            </div>
+            <div class="kpi-icon-box">
+                <i class="bi bi-images"></i>
+            </div>
+            <div class="kpi-decoration"></div>
+        </div>
+    </div>
+    <!-- Placed -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="kpi-card green">
+            <div class="kpi-content">
+                <span class="kpi-title">Placed Banners</span>
+                <h3 class="kpi-value">{{ placed_count }}</h3>
+            </div>
+            <div class="kpi-icon-box">
+                <i class="bi bi-geo-alt-fill"></i>
+            </div>
+            <div class="kpi-decoration"></div>
+        </div>
+    </div>
+    <!-- Planned -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="kpi-card yellow">
+            <div class="kpi-content">
+                <span class="kpi-title">Planned Banners</span>
+                <h3 class="kpi-value">{{ planned_count }}</h3>
+            </div>
+            <div class="kpi-icon-box">
+                <i class="bi bi-calendar-event"></i>
+            </div>
+            <div class="kpi-decoration"></div>
+        </div>
+    </div>
+    <!-- Total Spend -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="kpi-card purple">
+            <div class="kpi-content">
+                <span class="kpi-title">Total Spend</span>
+                <h3 class="kpi-value">₹{{ total_spend|floatformat:2 }}</h3>
+            </div>
+            <div class="kpi-icon-box">
+                <i class="bi bi-currency-rupee"></i>
+            </div>
+            <div class="kpi-decoration"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Chart 1: Spend Breakdown by Banner Type -->
+    <div class="col-lg-8">
+        <div class="card border shadow-sm h-100" style="border-radius: 0.75rem; background-color: #ffffff;">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-dark fs-6" id="vendorChartTitle"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend Breakdown by Banner Type</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Vendor Chart Toggle">
+                    <button type="button" class="btn btn-outline-primary active py-1 px-3" id="btnVendorSpend" style="font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem 0 0 0.375rem;">Spend</button>
+                    <button type="button" class="btn btn-outline-primary py-1 px-3" id="btnVendorCount" style="font-size: 0.75rem; font-weight: 600; border-radius: 0 0.375rem 0.375rem 0;">Banners</button>
+                </div>
+            </div>
+            <div class="card-body p-4 d-flex align-items-center justify-content-center" style="min-height: 320px;">
+                <canvas id="vendorSpendChart" style="max-height: 280px; width: 100%;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart 2: Banner Status Distribution -->
+    <div class="col-lg-4">
+        <div class="card border shadow-sm h-100" style="border-radius: 0.75rem; background-color: #ffffff;">
+            <div class="card-header bg-white py-3 border-bottom">
+                <span class="fw-bold text-dark fs-6"><i class="bi bi-pie-chart-fill me-2 text-primary"></i>Banner Status Distribution</span>
+            </div>
+            <div class="card-body p-4 d-flex align-items-center justify-content-center" style="min-height: 320px;">
+                <div style="width: 100%; max-width: 280px; margin: 0 auto;">
+                    <canvas id="statusDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Chart 3: Monthly Campaign Spend Trend -->
+    <div class="col-lg-12">
+        <div class="card border shadow-sm h-100" style="border-radius: 0.75rem; background-color: #ffffff;">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <span class="fw-bold text-dark fs-6" id="trendChartTitle"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Monthly Spend Trend</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Trend Chart Toggle">
+                    <button type="button" class="btn btn-outline-primary active py-1 px-3" id="btnTrendSpend" style="font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem 0 0 0.375rem;">Spend</button>
+                    <button type="button" class="btn btn-outline-primary py-1 px-3" id="btnTrendCount" style="font-size: 0.75rem; font-weight: 600; border-radius: 0 0.375rem 0.375rem 0;">Banners</button>
+                </div>
+            </div>
+            <div class="card-body p-4 d-flex align-items-center justify-content-center" style="min-height: 320px;">
+                <canvas id="monthlySpendChart" style="max-height: 280px; width: 100%;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border shadow-sm" style="border-radius: 0.75rem; background-color: #ffffff;">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <span class="fw-bold text-dark fs-6"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Banners</span>
+        <a href="{% url 'banner_list' %}" class="small text-primary fw-semibold text-decoration-none d-inline-flex align-items-center gap-1">
+            View all <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr class="table-light text-secondary-emphasis" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
+                    <th class="ps-4 py-3">Poster Name</th>
+                    <th class="py-3">Type</th>
+                    <th class="py-3">Size</th>
+                    <th class="py-3">Status</th>
+                    <th class="py-3">Created By</th>
+                    <th class="py-3">Total Spend</th>
+                    <th class="pe-4 py-3 text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for banner in recent_banners %}
+                <tr style="transition: background-color 0.15s ease;">
+                    <td class="ps-4 py-3 fw-bold text-dark">{{ banner.poster_name }}</td>
+                    <td class="py-3 text-secondary-emphasis" style="font-size: 0.9rem;">{{ banner.get_banner_type_display }}</td>
+                    <td class="py-3 text-secondary-emphasis" style="font-size: 0.9rem;">{{ banner.width }} x {{ banner.height }} {{ banner.get_size_unit_display }}</td>
+                    <td class="py-3">
+                        <span class="badge {% if banner.status == 'placed' %}bg-success-subtle text-success border border-success-subtle{% elif banner.status == 'planned' %}bg-warning-subtle text-warning-emphasis border border-warning-subtle{% elif banner.status == 'damaged' %}bg-danger-subtle text-danger-emphasis border border-danger-subtle{% else %}bg-secondary-subtle text-secondary border border-secondary-subtle{% endif %} px-2.5 py-1.5" style="border-radius: 30px; font-weight: 500; font-size: 0.75rem;">
+                            {{ banner.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="py-3 text-secondary-emphasis" style="font-size: 0.9rem;">{{ banner.created_by.username }}</td>
+                    <td class="py-3 fw-semibold text-dark">₹{{ banner.costs.all|total_cost_sum|floatformat:2 }}</td>
+                    <td class="pe-4 py-3 text-end">
+                        <div class="d-flex justify-content-end gap-2 align-items-center">
+                            <a href="{% url 'banner_detail' banner.pk %}" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center p-2" title="View Details" style="border-radius: 0.375rem;">
+                                <i class="bi bi-eye" style="font-size: 0.9rem; line-height: 1;"></i>
+                            </a>
+                            {% if user|has_permission:"can_edit_banner" %}
+                            <a href="{% url 'banner_edit' banner.pk %}" class="btn btn-sm btn-outline-warning d-inline-flex align-items-center justify-content-center p-2" title="Edit" style="border-radius: 0.375rem;">
+                                <i class="bi bi-pencil" style="font-size: 0.9rem; line-height: 1;"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <i class="bi bi-images fs-1 text-muted mb-2 d-block"></i>
+                        No banners recorded yet.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize flatpickr on date range selector
+    flatpickr("#date_range_picker", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "M j, Y",
+        prevArrow: '<span class="bi bi-chevron-left"></span>',
+        nextArrow: '<span class="bi bi-chevron-right"></span>'
+    });
+
+    // Colors
+    const primaryColor = '#0d6efd';
+    const successColor = '#198754';
+    const warningColor = '#ffc107';
+    const dangerColor = '#dc3545';
+    const infoColor = '#0dcaf0';
+    const grayColor = '#6c757d';
+
+    // Tooltip configuration shared across charts
+    const commonTooltip = {
+        backgroundColor: '#1e293b',
+        titleColor: '#ffffff',
+        bodyColor: '#e2e8f0',
+        titleFont: {
+            family: "'Inter', sans-serif",
+            size: 13,
+            weight: 'bold'
+        },
+        bodyFont: {
+            family: "'Inter', sans-serif",
+            size: 12
+        },
+        padding: 12,
+        cornerRadius: 8,
+        displayColors: false,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)'
+    };
+
+    // Center text plugin for Doughnut chart
+    const centerTextPlugin = {
+        id: 'centerText',
+        beforeDraw: function(chart) {
+            if (chart.config.type === 'doughnut') {
+                const ctx = chart.ctx;
+                ctx.restore();
+                
+                const data = chart.data.datasets[0].data;
+                const total = data.reduce((a, b) => a + b, 0);
+                
+                const chartArea = chart.chartArea;
+                if (!chartArea) return;
+                
+                const centerX = (chartArea.left + chartArea.right) / 2;
+                const centerY = (chartArea.top + chartArea.bottom) / 2;
+                
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Draw Count
+                ctx.font = "bold 26px 'Inter', sans-serif";
+                ctx.fillStyle = "#1e293b";
+                ctx.fillText(total, centerX, centerY - 8);
+                
+                // Draw Label
+                ctx.font = "600 10px 'Inter', sans-serif";
+                ctx.fillStyle = "#64748b";
+                ctx.fillText("BANNERS", centerX, centerY + 12);
+                
+                ctx.save();
+            }
+        }
+    };
+
+    let vendorChart = null;
+    let trendChart = null;
+
+    // 1. Spend Breakdown by Vendor
+    const vendorLabels = {{ chart_vendor_labels|safe }};
+    const vendorData = {{ chart_vendor_data|safe }};
+    const vendorCounts = {{ chart_vendor_counts|safe }};
+    
+    if (vendorData.length > 0) {
+        const vendorCtx = document.getElementById('vendorSpendChart').getContext('2d');
+        const vendorGradient = vendorCtx.createLinearGradient(0, 0, 0, 280);
+        vendorGradient.addColorStop(0, '#0d6efd');
+        vendorGradient.addColorStop(1, 'rgba(13, 110, 253, 0.15)');
+
+        vendorChart = new Chart(vendorCtx, {
+            type: 'bar',
+            data: {
+                labels: vendorLabels,
+                datasets: [{
+                    data: vendorData,
+                    backgroundColor: vendorGradient,
+                    borderColor: primaryColor,
+                    borderWidth: 1.5,
+                    borderRadius: 6,
+                    barThickness: 28,
+                    hoverBackgroundColor: '#0b5ed7'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.04)',
+                            drawTicks: false
+                        },
+                        border: {
+                            dash: [5, 5]
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + Number(value).toLocaleString('en-IN');
+                            },
+                            font: {
+                                family: "'Inter', sans-serif",
+                                size: 11
+                            },
+                            color: '#64748b'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                family: "'Inter', sans-serif",
+                                size: 11,
+                                weight: 600
+                            },
+                            color: '#475569'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        ...commonTooltip,
+                        callbacks: {
+                            label: function(context) {
+                                return ' Spend: ₹' + Number(context.raw).toLocaleString('en-IN');
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Toggle logic for Vendor Chart
+        const btnVendorSpend = document.getElementById('btnVendorSpend');
+        const btnVendorCount = document.getElementById('btnVendorCount');
+        const vendorChartTitle = document.getElementById('vendorChartTitle');
+
+        if (btnVendorSpend && btnVendorCount) {
+            btnVendorSpend.addEventListener('click', function() {
+                btnVendorSpend.classList.add('active');
+                btnVendorCount.classList.remove('active');
+                vendorChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend Breakdown by Banner Type';
+                
+                vendorChart.data.datasets[0].data = vendorData;
+                vendorChart.options.plugins.tooltip.callbacks.label = function(context) {
+                    return ' Spend: \u20b9' + Number(context.raw).toLocaleString('en-IN');
+                };
+                vendorChart.options.scales.y.ticks.callback = function(value) {
+                    return '\u20b9' + Number(value).toLocaleString('en-IN');
+                };
+                vendorChart.options.scales.y.ticks.precision = undefined;
+                vendorChart.options.scales.y.ticks.stepSize = undefined;
+                vendorChart.update();
+            });
+
+            btnVendorCount.addEventListener('click', function() {
+                btnVendorCount.classList.add('active');
+                btnVendorSpend.classList.remove('active');
+                vendorChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Banner Count by Banner Type';
+                
+                vendorChart.data.datasets[0].data = vendorCounts;
+                vendorChart.options.plugins.tooltip.callbacks.label = function(context) {
+                    return ' Banners: ' + context.raw;
+                };
+                vendorChart.options.scales.y.ticks.callback = function(value) {
+                    return Number.isInteger(value) ? value : null;
+                };
+                vendorChart.options.scales.y.ticks.precision = 0;
+                vendorChart.options.scales.y.ticks.stepSize = 1;
+                vendorChart.update();
+            });
+        }
+    } else {
+        document.getElementById('vendorSpendChart').parentElement.innerHTML = '<div class="text-muted small">No spend data available</div>';
+    }
+
+    // 2. Monthly Spend Trend
+    const trendLabels = {{ chart_trend_labels|safe }};
+    const trendData = {{ chart_trend_data|safe }};
+    const trendCounts = {{ chart_trend_counts|safe }};
+    
+    if (trendData.length > 0) {
+        const trendCtx = document.getElementById('monthlySpendChart').getContext('2d');
+        const trendGradient = trendCtx.createLinearGradient(0, 0, 0, 280);
+        trendGradient.addColorStop(0, 'rgba(13, 110, 253, 0.25)');
+        trendGradient.addColorStop(1, 'rgba(13, 110, 253, 0.00)');
+
+        trendChart = new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: trendLabels,
+                datasets: [{
+                    label: 'Monthly Spend',
+                    data: trendData,
+                    borderColor: primaryColor,
+                    backgroundColor: trendGradient,
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointBackgroundColor: primaryColor,
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 7,
+                    pointHoverBackgroundColor: primaryColor,
+                    pointHoverBorderColor: '#ffffff',
+                    pointHoverBorderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.04)',
+                            drawTicks: false
+                        },
+                        border: {
+                            dash: [5, 5]
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + Number(value).toLocaleString('en-IN');
+                            },
+                            font: {
+                                family: "'Inter', sans-serif",
+                                size: 11
+                            },
+                            color: '#64748b'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                family: "'Inter', sans-serif",
+                                size: 11,
+                                weight: 600
+                            },
+                            color: '#475569'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        ...commonTooltip,
+                        callbacks: {
+                            label: function(context) {
+                                return ' Total Spend: ₹' + Number(context.raw).toLocaleString('en-IN');
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Toggle logic for Trend Chart
+        const btnTrendSpend = document.getElementById('btnTrendSpend');
+        const btnTrendCount = document.getElementById('btnTrendCount');
+        const trendChartTitle = document.getElementById('trendChartTitle');
+
+        if (btnTrendSpend && btnTrendCount) {
+            btnTrendSpend.addEventListener('click', function() {
+                btnTrendSpend.classList.add('active');
+                btnTrendCount.classList.remove('active');
+                trendChartTitle.innerHTML = '<i class="bi bi-graph-up-arrow me-2 text-primary"></i>Monthly Spend Trend';
+                
+                trendChart.data.datasets[0].data = trendData;
+                trendChart.data.datasets[0].label = 'Monthly Spend';
+                trendChart.options.plugins.tooltip.callbacks.label = function(context) {
+                    return ' Total Spend: \u20b9' + Number(context.raw).toLocaleString('en-IN');
+                };
+                trendChart.options.scales.y.ticks.callback = function(value) {
+                    return '\u20b9' + Number(value).toLocaleString('en-IN');
+                };
+                trendChart.options.scales.y.ticks.precision = undefined;
+                trendChart.options.scales.y.ticks.stepSize = undefined;
+                trendChart.update();
+            });
+
+            btnTrendCount.addEventListener('click', function() {
+                btnTrendCount.classList.add('active');
+                btnTrendSpend.classList.remove('active');
+                trendChartTitle.innerHTML = '<i class="bi bi-graph-up-arrow me-2 text-primary"></i>Monthly Banner Placements';
+                
+                trendChart.data.datasets[0].data = trendCounts;
+                trendChart.data.datasets[0].label = 'Banners Placed';
+                trendChart.options.plugins.tooltip.callbacks.label = function(context) {
+                    return ' Banners: ' + context.raw;
+                };
+                trendChart.options.scales.y.ticks.callback = function(value) {
+                    return Number.isInteger(value) ? value : null;
+                };
+                trendChart.options.scales.y.ticks.precision = 0;
+                trendChart.options.scales.y.ticks.stepSize = 1;
+                trendChart.update();
+            });
+        }
+    } else {
+        document.getElementById('monthlySpendChart').parentElement.innerHTML = '<div class="text-muted small">No trend data available</div>';
+    }
+
+    // 3. Banner Status Distribution
+    const statusLabels = {{ chart_status_labels|safe }};
+    const statusData = {{ chart_status_data|safe }};
+    
+    if (statusData.length > 0) {
+        const colors = statusLabels.map(label => {
+            const l = label.toLowerCase();
+            if (l.includes('placed')) return successColor;
+            if (l.includes('planned')) return warningColor;
+            if (l.includes('damaged')) return dangerColor;
+            return grayColor;
+        });
+
+        new Chart(document.getElementById('statusDistributionChart'), {
+            type: 'doughnut',
+            data: {
+                labels: statusLabels,
+                datasets: [{
+                    data: statusData,
+                    backgroundColor: colors,
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverOffset: 6,
+                    spacing: 3,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '72%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 16,
+                            font: {
+                                family: "'Inter', sans-serif",
+                                size: 11,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    tooltip: {
+                        ...commonTooltip,
+                        callbacks: {
+                            label: function(context) {
+                                return ' Banners: ' + context.raw;
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: [centerTextPlugin]
+        });
+    } else {
+        document.getElementById('statusDistributionChart').parentElement.innerHTML = '<div class="text-muted small">No status data available</div>';
+    }
+});
+</script>
+{% endblock %}

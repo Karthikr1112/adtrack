@@ -1,0 +1,32 @@
+# Secrets — never commit; contains SECRET_KEY and DB passwords
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+
+# User uploads (banner photos, bills) — belongs in backups, not git
+media/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log

@@ -1,0 +1,348 @@
+{% extends 'base.html' %}
+{% load banner_extras %}
+{% block title %}{{ banner.poster_name }} · AdTrack{% endblock %}
+{% block page_title %}Banner Details{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-3">
+        <li class="breadcrumb-item"><a href="{% url 'banner_list' %}" class="text-decoration-none">Banners</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ banner.poster_name }}</li>
+    </ol>
+</nav>
+
+<!-- Page Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h3 class="mb-0 text-dark fw-bold d-flex align-items-center gap-2 flex-wrap">
+            {{ banner.poster_name }}
+            <span class="badge {% if banner.status == 'placed' %}bg-success-subtle text-success border border-success-subtle{% elif banner.status == 'planned' %}bg-warning-subtle text-warning-emphasis border border-warning-subtle{% elif banner.status == 'damaged' %}bg-danger-subtle text-danger border border-danger-subtle{% else %}bg-secondary-subtle text-secondary border border-secondary-subtle{% endif %} px-2.5 py-1.5" style="border-radius: 30px; font-size: 0.75rem; font-weight: 600;">
+                {{ banner.get_status_display }}
+            </span>
+        </h3>
+    </div>
+    <div class="d-flex gap-2">
+        {% if user|has_permission:"can_edit_banner" %}
+        <a href="{% url 'banner_edit' banner.pk %}" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1.5 fw-semibold" style="border-radius: 0.375rem;">
+            <i class="bi bi-pencil"></i> Edit Details
+        </a>
+        {% endif %}
+        {% if user|has_permission:"can_delete_banner" %}
+        <a href="{% url 'banner_delete' banner.pk %}" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1.5 fw-semibold" style="border-radius: 0.375rem;">
+            <i class="bi bi-trash"></i> Delete Banner
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Banner Details Card -->
+<div class="card border shadow-sm mb-4" style="border-radius: 0.75rem; background-color: #ffffff;">
+    <div class="card-body p-3 p-md-4">
+        <div class="row g-4">
+            <div class="col-6 col-md-auto pe-md-4">
+                <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Banner Type</div>
+                <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                    <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;"><i class="bi bi-tag-fill small"></i></div>
+                    {{ banner.get_banner_type_display }}
+                </div>
+            </div>
+            <div class="col-6 col-md-auto pe-md-4 border-start-md">
+                <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Dimensions</div>
+                <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                    <div class="bg-info-subtle text-info rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;"><i class="bi bi-rulers small"></i></div>
+                    {{ banner.width }} × {{ banner.height }} {{ banner.get_size_unit_display }}
+                </div>
+            </div>
+            {% if banner.material %}
+            <div class="col-6 col-md-auto pe-md-4 border-start-md">
+                <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Material</div>
+                <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                    <div class="bg-warning-subtle text-warning rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;"><i class="bi bi-layers-fill small"></i></div>
+                    {{ banner.material }}
+                </div>
+            </div>
+            {% endif %}
+            <div class="col-6 col-md-auto pe-md-4 border-start-md">
+                <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Created By</div>
+                <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                    <div class="bg-secondary-subtle text-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;"><i class="bi bi-person-fill small"></i></div>
+                    {{ banner.created_by.username }}
+                </div>
+            </div>
+            <div class="col-6 col-md-auto border-start-md">
+                <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Created At</div>
+                <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                    <div class="bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center" style="width: 28px; height: 28px;"><i class="bi bi-calendar3 small"></i></div>
+                    {{ banner.created_at|date:"d M Y" }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Column 1: Placements List -->
+    <div class="col-lg-4">
+        <h5 class="mb-3 fw-bold text-dark">Placements</h5>
+        {% for placement in banner.placements.all %}
+        <div class="card border shadow-sm mb-3" style="border-radius: 0.75rem; background-color: #ffffff;">
+            <div class="card-body p-3">
+                <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                    <div>
+                        <h6 class="mb-1 fw-bold text-dark">
+                            <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ placement.location_name }}
+                        </h6>
+                        <div class="text-secondary small mb-3">{{ placement.address }}</div>
+                        <div class="small text-muted d-flex flex-column gap-1">
+                            <span><i class="bi bi-calendar-event me-1"></i>Placed: <strong>{{ placement.placed_date|date:"d M Y" }}</strong></span>
+                            {% if placement.removal_date %}<span><i class="bi bi-calendar-x me-1"></i>Removed: <strong>{{ placement.removal_date|date:"d M Y" }}</strong></span>{% endif %}
+                            {% if placement.placed_by %}<span><i class="bi bi-person me-1"></i>by <strong>{{ placement.placed_by.username }}</strong></span>{% endif %}
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 mt-1" type="button" data-bs-toggle="collapse" data-bs-target="#photoCollapse{{ placement.id }}" style="border-radius: 0.375rem; font-weight: 500;">
+                        <i class="bi bi-camera me-1"></i>Add Photo
+                    </button>
+                </div>
+
+                {% if placement.photos.all %}
+                <hr class="my-3">
+                <div class="row g-2">
+                    {% for photo in placement.photos.all %}
+                    <div class="col-6">
+                        <div class="position-relative border rounded overflow-hidden shadow-sm" style="transition: transform 0.15s ease;">
+                            <a href="{{ photo.photo.url }}" target="_blank">
+                                <img src="{{ photo.photo.url }}" class="img-fluid w-100" style="height: 90px; object-fit: cover;" alt="Placement photo">
+                            </a>
+                            <span class="badge position-absolute top-0 end-0 m-1 text-bg-{% if photo.location_verified %}success{% else %}danger{% endif %} shadow-sm d-flex align-items-center gap-0.5" style="font-size: 0.65rem; padding: 0.2rem 0.35rem;" title="{% if photo.location_verified %}Location Verified{% else %}Location Not Verified{% endif %}">
+                                <i class="bi bi-{% if photo.location_verified %}check-circle-fill{% else %}exclamation-triangle-fill{% endif %}"></i>
+                                {% if photo.location_verified %}Verified{% else %}Unverified{% endif %}
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-1 px-1">
+                            <span class="text-secondary" style="font-size: 0.65rem;">{{ photo.captured_at|date:"d M H:i" }}</span>
+                            <a href="{{ photo.photo.url }}" download class="btn btn-link p-0 text-decoration-none d-flex align-items-center gap-1 text-primary" style="font-size: 0.75rem; font-weight: 600;" title="Download photo">
+                                <i class="bi bi-download"></i><span>Download</span>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-muted small mt-3 px-2 py-1.5 bg-light rounded"><i class="bi bi-info-circle me-1"></i>No photos uploaded yet.</div>
+                {% endif %}
+
+                {# Inline Add Photo form #}
+                <div class="collapse {% if open_photo_placement_id == placement.id or photo_error_placement_id == placement.id %}show{% endif %} mt-3" id="photoCollapse{{ placement.id }}">
+                    <div class="p-3 border rounded bg-light">
+                        <form method="post" action="{% url 'upload_photo' placement.id %}" enctype="multipart/form-data" class="photo-upload-form" novalidate>
+                            {% csrf_token %}
+                            {% if photo_error_placement_id == placement.id %}
+                                {% with form=photo_form %}
+                                {% for field in form %}
+                                {% if field.name != 'photo_latitude' and field.name != 'photo_longitude' %}
+                                <div class="mb-3">
+                                    <label for="{{ field.id_for_label }}" class="form-label small fw-semibold text-secondary mb-1">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                                </div>
+                                {% else %}
+                                    {{ field }}
+                                {% endif %}
+                                {% endfor %}
+                                {% endwith %}
+                            {% else %}
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Select Photo</label>
+                                    <input type="file" name="photo" class="form-control form-control-sm" accept="image/*" required>
+                                </div>
+                                <input type="hidden" name="photo_latitude" class="photo-lat" data-geo="lat">
+                                <input type="hidden" name="photo_longitude" class="photo-lng" data-geo="lng">
+                            {% endif %}
+                            
+                            <div class="mb-3 d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-outline-secondary btn-sm capture-gps-btn">
+                                    <i class="bi bi-crosshair me-1"></i>Capture Current GPS Location
+                                </button>
+                                <span class="gps-status small text-muted"></span>
+                            </div>
+                            
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary btn-sm px-3">
+                                    <i class="bi bi-check-circle me-1"></i>Upload
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-toggle="collapse" data-bs-target="#photoCollapse{{ placement.id }}">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="card border shadow-sm">
+            <div class="card-body text-center text-muted py-5">
+                <i class="bi bi-geo-alt-fill fs-1 text-muted mb-2 d-block"></i>
+                No placements recorded for this banner.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Column 2: Placements Map -->
+    <div class="col-lg-4">
+        <h5 class="mb-3 fw-bold text-dark">Map View</h5>
+        {% if banner.placements.all %}
+        <div class="card border shadow-sm mb-4" style="border-radius: 0.75rem; overflow: hidden; background-color: #ffffff;">
+            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                <h6 class="card-title mb-0 fw-bold text-primary">
+                    <i class="bi bi-map me-2"></i>Placements Map
+                </h6>
+                <span class="badge bg-light text-secondary border fw-normal">{{ banner.placements.all|length }} Placement(s)</span>
+            </div>
+            <div class="card-body p-0">
+                <div id="detail-map" style="height: 380px; z-index: 1;"></div>
+            </div>
+        </div>
+        {% else %}
+        <div class="card border shadow-sm">
+            <div class="card-body text-center text-muted py-5">
+                <i class="bi bi-map fs-1 text-muted mb-2 d-block"></i>
+                No placements to show on map.
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Column 3: Costs -->
+    <div class="col-lg-4">
+        <h5 class="mb-3 fw-bold text-dark">Costs Details</h5>
+        
+        <!-- Total Spend Card -->
+        <div class="card border shadow-sm mb-4" style="border-radius: 0.75rem; background-color: #ffffff;">
+            <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-secondary small fw-semibold">Total Spend</span>
+                    <h3 class="mb-0 fw-bold text-dark mt-1">₹{{ total_spend|floatformat:2 }}</h3>
+                </div>
+                <div class="rounded-3 bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                    <i class="bi bi-currency-rupee fs-3"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vendor Cost breakdown -->
+        {% for cost in banner.costs.all %}
+        <div class="card border shadow-sm mb-3" style="border-radius: 0.75rem; background-color: #ffffff;">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="fw-bold text-dark"><i class="bi bi-shop me-1.5 text-primary"></i>Vendor: {{ cost.vendor_name|default:"Not specified" }}</span>
+                    <span class="badge bg-light border text-dark fw-bold">₹{{ cost.total_cost|floatformat:2 }}</span>
+                </div>
+                
+                <ul class="list-group list-group-flush mb-3">
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2 small text-secondary">
+                        <span>Printing Cost</span>
+                        <span class="fw-semibold text-dark">₹{{ cost.printing_cost|floatformat:2 }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2 small text-secondary">
+                        <span>Installation Cost</span>
+                        <span class="fw-semibold text-dark">₹{{ cost.installation_cost|floatformat:2 }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2 small text-secondary">
+                        <span>Rental Cost</span>
+                        <span class="fw-semibold text-dark">₹{{ cost.rental_cost|floatformat:2 }}</span>
+                    </li>
+                </ul>
+
+                {% if cost.bill_number or cost.paid_on or cost.bill_photo %}
+                <div class="border-top pt-3 small text-secondary">
+                    {% if cost.bill_number %}<div class="mb-1"><i class="bi bi-hash me-1.5"></i>Bill #: <strong>{{ cost.bill_number }}</strong></div>{% endif %}
+                    {% if cost.paid_on %}<div class="mb-1.5"><i class="bi bi-calendar-check me-1.5"></i>Paid on: <strong>{{ cost.paid_on|date:"d M Y" }}</strong></div>{% endif %}
+                    {% if cost.bill_photo %}
+                    <div class="mt-3">
+                        {% if ".pdf" in cost.bill_photo.name|lower %}
+                        <div class="position-relative border rounded mb-2 overflow-hidden d-flex align-items-center justify-content-center" style="max-width: 120px; height: 80px; background-color: #fafbfc;" title="Click to view PDF">
+                            <a href="{{ cost.bill_photo.url }}" target="_blank" class="text-decoration-none d-flex flex-column align-items-center">
+                                <i class="bi bi-file-earmark-pdf-fill text-danger fs-2"></i>
+                                <span class="small text-muted" style="font-size: 0.65rem;">PDF Document</span>
+                            </a>
+                        </div>
+                        {% else %}
+                        <div class="position-relative border rounded mb-2 overflow-hidden" style="max-width: 120px; height: 80px; background-color: #fafbfc;" title="Click to view full image">
+                            <img src="{{ cost.bill_photo.url }}" class="w-100 h-100" style="object-fit: cover; cursor: pointer;" onclick="window.open('{{ cost.bill_photo.url }}', '_blank')">
+                        </div>
+                        {% endif %}
+                        <a href="{{ cost.bill_photo.url }}" download class="btn btn-xs btn-outline-primary d-inline-flex align-items-center gap-1" style="font-size: 0.75rem; font-weight: 500;">
+                            <i class="bi bi-download"></i>Download Bill
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="card border shadow-sm">
+            <div class="card-body text-center text-muted py-5">
+                <i class="bi bi-receipt fs-1 text-muted mb-2 d-block"></i>
+                No costs recorded for this banner.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if banner.placements.all %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const placements = [
+        {% for placement in banner.placements.all %}
+            {% if placement.latitude and placement.longitude %}
+            {
+                name: "{{ placement.location_name|escapejs }}",
+                address: "{{ placement.address|escapejs }}",
+                placed_date: "{{ placement.placed_date|date:'d M Y' }}",
+                lat: {{ placement.latitude }},
+                lng: {{ placement.longitude }}
+            },
+            {% endif %}
+        {% endfor %}
+    ];
+
+    if (placements.length === 0) return;
+
+    // Center map around the first placement
+    const map = L.map('detail-map');
+    
+    // Add openstreetmap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    const bounds = [];
+
+    placements.forEach(function(p) {
+        const marker = L.marker([p.lat, p.lng]).addTo(map);
+        marker.bindPopup('<strong>' + p.name + '</strong><br><small class="text-muted">' + p.address + '</small><br><small>Placed: ' + p.placed_date + '</small>');
+        bounds.push([p.lat, p.lng]);
+    });
+
+    if (bounds.length === 1) {
+        map.setView(bounds[0], 15);
+    } else {
+        map.fitBounds(bounds, { padding: [30, 30] });
+    }
+});
+</script>
+{% endif %}
+{% endblock %}
