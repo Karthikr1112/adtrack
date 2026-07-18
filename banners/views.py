@@ -190,10 +190,11 @@ def add_placement(request, banner_id):
 
     if request.method == 'POST':
         form = BannerPlacementForm(request.POST)
-        # site_photo bypasses the form, so validate it explicitly — and before
-        # saving anything, so an oversized file doesn't leave a half-saved step.
-        site_photo = request.FILES.get('site_photo')
-        photo_error = validate_photo_upload(site_photo) if site_photo else None
+        # site_photo bypasses the form, so validate every file explicitly —
+        # and before saving anything, so a bad file doesn't leave a
+        # half-saved step.
+        site_photos = request.FILES.getlist('site_photo')
+        photo_error = _validate_photo_list(site_photos)
         if form.is_valid() and photo_error is None:
             placement = form.save(commit=False)
             placement.banner = banner
@@ -202,16 +203,12 @@ def add_placement(request, banner_id):
             banner.status = 'placed'
             banner.save(update_fields=['status'])
 
-            if site_photo:
-                photo = PlacementPhoto(
-                    placement=placement,
-                    photo=site_photo,
-                    photo_latitude=request.POST.get('site_photo_latitude') or None,
-                    photo_longitude=request.POST.get('site_photo_longitude') or None,
-                    uploaded_by=request.user,
-                )
-                photo.location_verified = verify_location(placement, photo)
-                photo.save()
+            _save_placement_photos(
+                placement, site_photos,
+                request.POST.get('site_photo_latitude'),
+                request.POST.get('site_photo_longitude'),
+                request.user,
+            )
 
             messages.success(request, 'Placement recorded.')
             return redirect(f"{reverse('banner_add')}?step=cost&banner_id={banner.id}")
@@ -231,15 +228,24 @@ def upload_photo(request, placement_id):
 
     if request.method == 'POST':
         form = PlacementPhotoForm(request.POST, request.FILES)
-        if form.is_valid():
-            photo = form.save(commit=False)
-            photo.placement = placement
-            photo.uploaded_by = request.user
-            photo.location_verified = verify_location(placement, photo)
-            photo.save()
-            messages.success(request, 'Photo uploaded and location checked.')
+        photos = request.FILES.getlist('photo')
+        photo_error = _validate_photo_list(photos)
+        if form.is_valid() and photos and photo_error is None:
+            _save_placement_photos(
+                placement, photos,
+                form.cleaned_data.get('photo_latitude'),
+                form.cleaned_data.get('photo_longitude'),
+                request.user,
+            )
+            count = len(photos)
+            messages.success(
+                request,
+                f"{count} photo{'s' if count > 1 else ''} uploaded and location checked."
+            )
             return redirect('banner_detail', pk=placement.banner_id)
 
+        if photo_error:
+            form.add_error(None, photo_error)
         messages.error(request, 'Please correct the errors below.')
         banner = get_object_or_404(_detail_queryset(), id=placement.banner_id)
         context = _detail_context(banner, photo_form=form, photo_error_placement_id=placement.id)
@@ -247,6 +253,31 @@ def upload_photo(request, placement_id):
 
     url = reverse('banner_detail', kwargs={'pk': placement.banner_id})
     return redirect(f"{url}?photo={placement.id}")
+
+
+def _validate_photo_list(files):
+    """Validates every uploaded photo; returns the first error message
+    (prefixed with the file name) or None if all are acceptable."""
+    for f in files:
+        error = validate_photo_upload(f)
+        if error:
+            return f'{f.name}: {error}'
+    return None
+
+
+def _save_placement_photos(placement, files, latitude, longitude, user):
+    """Creates one PlacementPhoto per uploaded file. All photos from one
+    submission share the same GPS pair (they're taken at the same spot)."""
+    for f in files:
+        photo = PlacementPhoto(
+            placement=placement,
+            photo=f,
+            photo_latitude=latitude or None,
+            photo_longitude=longitude or None,
+            uploaded_by=user,
+        )
+        photo.location_verified = verify_location(placement, photo)
+        photo.save()
 
 
 def verify_location(placement, photo):
@@ -466,10 +497,10 @@ def banner_edit(request, pk):
         placement_valid = placement_form.is_valid() if has_placement else True
         cost_valid = cost_form.is_valid() if has_cost else True
 
-        # site_photo bypasses the forms, so validate it explicitly before
-        # anything is saved.
-        site_photo = request.FILES.get('site_photo')
-        photo_error = validate_photo_upload(site_photo) if site_photo else None
+        # site_photo bypasses the forms, so validate every file explicitly
+        # before anything is saved.
+        site_photos = request.FILES.getlist('site_photo')
+        photo_error = _validate_photo_list(site_photos)
         if photo_error:
             placement_form.add_error(None, f'Site photo: {photo_error}')
 
@@ -483,17 +514,13 @@ def banner_edit(request, pk):
                     pl.placed_by = request.user
                 pl.save()
 
-                # Save site photo if uploaded
-                if site_photo:
-                    photo = PlacementPhoto(
-                        placement=pl,
-                        photo=site_photo,
-                        photo_latitude=request.POST.get('site_photo_latitude') or None,
-                        photo_longitude=request.POST.get('site_photo_longitude') or None,
-                        uploaded_by=request.user,
-                    )
-                    photo.location_verified = verify_location(pl, photo)
-                    photo.save()
+                # Save site photos if uploaded
+                _save_placement_photos(
+                    pl, site_photos,
+                    request.POST.get('site_photo_latitude'),
+                    request.POST.get('site_photo_longitude'),
+                    request.user,
+                )
                 
             if has_cost:
                 co = cost_form.save(commit=False)

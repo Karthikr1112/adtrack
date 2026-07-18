@@ -226,19 +226,35 @@ def pending_requests(request):
 
 @role_required('can_manage_roles')
 def role_matrix(request):
-    from .models import Role, Feature
+    from .models import Role
 
-    roles = Role.objects.all().order_by('id')
-    features = Feature.objects.all().order_by('id')
+    roles = list(Role.objects.all().order_by('id'))
+    codenames = Role.permission_fields()  # read directly from the model columns
 
     if request.method == 'POST':
         for role in roles:
-            # We expect checkboxes named "role_{role.id}_features" with values matching feature.id
-            checked_feature_ids = request.POST.getlist(f"role_{role.id}_features")
-            role.permissions.set(checked_feature_ids)
-            
+            # Checkboxes named "role_{role.id}_features" carry the codenames
+            # that are ticked; every permission column is set accordingly.
+            checked = set(request.POST.getlist(f"role_{role.id}_features"))
+            for codename in codenames:
+                setattr(role, codename, codename in checked)
+            role.save(update_fields=codenames)
+
         messages.success(request, 'Role permissions updated successfully.')
         return redirect('role_matrix')
+
+    # Grid rows built straight from the model's permission columns.
+    features = [
+        {
+            'name': Role.permission_label(codename),
+            'codename': codename,
+            'cells': [
+                {'role': role, 'checked': getattr(role, codename)}
+                for role in roles
+            ],
+        }
+        for codename in codenames
+    ]
 
     return render(request, 'accounts/role_matrix.html', {'roles': roles, 'features': features})
 

@@ -60,7 +60,11 @@
                                 {% endif %}
                             </td>
                             <td class="py-3.5">
-                                {% if not u.is_active or not u.profile.role %}
+                                {% if u.is_superuser %}
+                                    <span class="badge px-2.5 py-1 rounded-pill" style="font-size: 0.75rem; font-weight: 700; color: #6d28d9; background: linear-gradient(135deg, #ede9fe, #ddd6fe); border: 1px solid #c4b5fd;">
+                                        <i class="bi bi-shield-fill-check me-1"></i>Super User
+                                    </span>
+                                {% elif not u.is_active or not u.profile.role %}
                                     <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1 rounded-pill" style="font-size: 0.75rem; font-weight: 600;">
                                         Pending Role
                                     </span>

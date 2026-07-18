@@ -91,7 +91,7 @@
                 <div class="flex-grow-1 overflow-hidden">
                     <div class="text-truncate fw-bold text-dark" style="font-size: 0.9rem; line-height: 1.2;">{{ user.username }}</div>
                     <span class="badge text-bg-primary shadow-sm mt-1" style="font-size: 0.65rem; text-transform: uppercase; padding: 0.25em 0.45em;">
-                        {{ user.profile.role.name|default:"No Role"|title }}
+                        {% if user.is_superuser %}Super User{% else %}{{ user.profile.role.name|default:"No Role"|title }}{% endif %}
                     </span>
                 </div>
             </div>

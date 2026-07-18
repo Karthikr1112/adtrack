@@ -27,18 +27,14 @@
                                 {% endfor %}
                             </tr>
                         </thead>
-                        {% regroup features by category as category_list %}
                         <tbody style="font-size: 0.95rem;">
-                            {% for category in category_list %}
-                            <tr class="table-light"><td colspan="100%" class="ps-4 py-2 text-start small fw-bold text-muted text-uppercase">{{ category.grouper }}</td></tr>
-                                {% for feature in category.list %}
-                                <tr>
-                                    <td class="ps-4 py-3 text-start fw-semibold text-dark"><i class="bi bi-check-circle-fill text-muted me-2"></i>{{ feature.name }}</td>
-                                    {% for role in roles %}
-                                    <td class="py-3"><input type="checkbox" class="form-check-input" name="role_{{ role.id }}_features" value="{{ feature.id }}" {% if feature in role.permissions.all %}checked{% endif %}></td>
-                                    {% endfor %}
-                                </tr>
+                            {% for feature in features %}
+                            <tr>
+                                <td class="ps-4 py-3 text-start fw-semibold text-dark"><i class="bi bi-check-circle-fill text-muted me-2"></i>{{ feature.name }}</td>
+                                {% for cell in feature.cells %}
+                                <td class="py-3"><input type="checkbox" class="form-check-input" name="role_{{ cell.role.id }}_features" value="{{ feature.codename }}" {% if cell.checked %}checked{% endif %}></td>
                                 {% endfor %}
+                            </tr>
                             {% endfor %}
                         </tbody>
                     </table>
