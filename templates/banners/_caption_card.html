@@ -1,0 +1,22 @@
+{% comment %}
+Renders one caption file as a small preview card with view/download links.
+Used by banner_detail.html. Expects: file (a FileField value), label (str).
+{% endcomment %}
+<div class="border rounded overflow-hidden shadow-sm h-100 d-flex flex-column">
+    {% if '.pdf' in file.name|lower %}
+    <a href="{{ file.url }}" target="_blank" class="text-decoration-none d-flex flex-column align-items-center justify-content-center py-4" style="background-color: #fafbfc; height: 110px;">
+        <i class="bi bi-file-earmark-pdf-fill text-danger fs-2"></i>
+        <span class="small text-muted mt-1" style="font-size: 0.72rem;">PDF Document</span>
+    </a>
+    {% else %}
+    <a href="{{ file.url }}" target="_blank">
+        <img src="{{ file.url }}" class="img-fluid w-100" style="height: 110px; object-fit: cover;" alt="{{ label }}">
+    </a>
+    {% endif %}
+    <div class="d-flex justify-content-between align-items-center px-2 py-2 border-top" style="background-color: #fff;">
+        <span class="small fw-semibold text-dark">{{ label }}</span>
+        <a href="{{ file.url }}" download class="text-decoration-none d-flex align-items-center gap-1 text-primary small fw-semibold" title="Download">
+            <i class="bi bi-download"></i>
+        </a>
+    </div>
+</div>

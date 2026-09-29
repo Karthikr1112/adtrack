@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+    @page { size: A4; margin: 1cm; }
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 8px; color: #2b2b2b; }
+
+    /* ---- Top bar ---- */
+    .top-bar-table { width: 100%; margin-bottom: 4px; }
+    .top-bar-table td { font-size: 6.5px; color: #555; }
+
+    /* ---- Header ---- */
+    .brand-table { width: 100%; border-bottom: 2px solid #1b7a3d; padding-bottom: 4px; margin-bottom: 4px; }
+    .nav-links { text-align: right; font-size: 6.5px; color: #333; line-height: 1.3; }
+
+    /* ---- Section title row ---- */
+    .doc-title-row { width: 100%; margin: 0 0 6px; }
+    .doc-title { font-size: 12px; font-weight: bold; color: #1b7a3d; }
+    .po-number { font-size: 9px; font-weight: bold; color: #1e293b; text-align: right; }
+
+    /* ---- Work order intro box ---- */
+    .intro-box { width: 100%; border: 1px solid #ccc; border-collapse: collapse; margin-bottom: 7px; }
+    .intro-box td { border: 1px solid #ccc; padding: 3px 6px; font-size: 8px; vertical-align: top; }
+    .intro-box .entity-name { font-weight: bold; }
+
+    /* ---- Section subheadings ---- */
+    .section-title { color: #1b7a3d; font-weight: bold; font-size: 9.5px; margin-top: 2px; margin-bottom: 3px; }
+
+    /* ---- Detail tables ---- */
+    .detail-table { width: 100%; border: 1px solid #ccc; border-collapse: collapse; margin-bottom: 6px; }
+    .detail-table th { background-color: #f5f5f5; text-align: left; padding: 3px 6px; font-size: 7.8px; font-weight: bold; border: 1px solid #ccc; }
+    .detail-table td { padding: 3px 6px; font-size: 8px; border: 1px solid #ccc; }
+
+    /* ---- Financial table ---- */
+    .financial-table { width: 45%; border: 1px solid #ccc; border-collapse: collapse; margin-bottom: 8px; }
+    .financial-table th { background-color: #f5f5f5; text-align: left; padding: 3px 6px; font-size: 7.8px; font-weight: bold; border: 1px solid #ccc; }
+    .financial-table td { padding: 3px 6px; font-size: 8px; border: 1px solid #ccc; }
+    .financial-table .total-row td { font-weight: bold; font-size: 9.5px; border-top: 2px solid #333; }
+
+    /* ---- Signature block ---- */
+    .sign-block { width: 100%; margin: 8px 0 8px; }
+    .sign-block td { font-size: 8px; font-weight: bold; }
+
+    /* ---- Notes / Terms ---- */
+    .notes ul { margin: 0; padding-left: 14px; }
+    .notes li { font-size: 10.5px; line-height: 1.4; margin-bottom: 4px; text-align: justify; color: #334155; }
+</style>
+</head>
+<body>
+
+    <!-- Top bar -->
+    <table class="top-bar-table">
+        <tr>
+            <td style="text-align: left;">{{ order.created_at|date:"d/m/Y, H:i" }}</td>
+            <td style="text-align: right;">Work Order — {{ banner.proposal_number }}</td>
+        </tr>
+    </table>
+
+    <!-- Header -->
+    <table class="brand-table">
+        <tr>
+            <td width="60%"><img src="{{ logo_data_uri }}" width="230" height="44"/></td>
+            <td width="40%" class="nav-links">
+                FASHION&nbsp;|&nbsp;LIFESTYLE&nbsp;|&nbsp;HOME ESSENTIALS<br/>
+                SUPERMARKET&nbsp;|&nbsp;FOOD COURT&nbsp;|&nbsp;BAKERY
+            </td>
+        </tr>
+    </table>
+
+    <table class="doc-title-row">
+        <tr>
+            <td width="60%"><span class="doc-title">Work Order Details</span></td>
+            <td width="40%" class="po-number">PO Number: [ {{ order.po_number }} ]</td>
+        </tr>
+    </table>
+
+    <!-- Intro box -->
+    <table class="intro-box">
+        <tr>
+            <td colspan="2" class="entity-name">JEYACHANDRAN RETAIL PRIVATE LIMITED</td>
+        </tr>
+        <tr>
+            <td width="65%">The details of Work Order given to [ {{ banner.vendor.name|default:"—" }} ]</td>
+            <td width="35%" style="text-align: right;">Proposal Number: [ {{ banner.proposal_number }} ]</td>
+        </tr>
+        <tr>
+            <td colspan="2">towards [ {{ banner.subcategory.name|default:banner.category.name|default:"—" }} ]</td>
+        </tr>
+    </table>
+
+    <!-- Activity Details -->
+    <div class="section-title">Activity Details</div>
+    <table class="detail-table">
+        <tr>
+            <th width="28%">Name of Activity</th>
+            <th width="18%">Start Date</th>
+            <th width="18%">End Date</th>
+            <th width="18%">Region</th>
+            <th width="18%">Department</th>
+        </tr>
+        <tr>
+            <td>{{ banner.campaign.name|default:"—" }}</td>
+            <td>{% if banner.start_date %}{{ banner.start_date|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+            <td>{% if banner.end_date %}{{ banner.end_date|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+            <td>{{ banner.location|default:"—" }}</td>
+            <td>{{ banner.department.name|default:"—" }}</td>
+        </tr>
+        {% if banner.items.all %}
+        <tr>
+            <th width="10%">Order #</th>
+            <th width="16%">Store Name</th>
+            <th width="14%">Medium</th>
+            <th width="16%">Size (H × W)</th>
+            <th width="10%">Sq. Ft.</th>
+            <th width="6%">Qty</th>
+            <th width="10%">Rate</th>
+            <th width="14%">Tax</th>
+            <th width="14%">Amount</th>
+        </tr>
+        {% for item in banner.items.all %}
+        <tr>
+            <td>Order #{{ item.item_number }}</td>
+            <td>{{ item.store_name|default:banner.location|default:"—" }}</td>
+            <td>{{ item.medium.name|default:"—" }}</td>
+            <td>{{ item.height }} × {{ item.width }} {{ item.get_size_unit_display }}</td>
+            <td>{{ item.square_feet|floatformat:2 }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.unit_price|floatformat:2 }}</td>
+            <td>{{ item.tax_percentage_display }}</td>
+            <td>{{ item.grand_total|default:item.total_amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+            <th width="22%">Quantity</th>
+            <th width="22%">Size</th>
+            <th width="34%">Unit Rate</th>
+            <th width="22%">Amount</th>
+        </tr>
+        <tr>
+            <td>{{ banner.quantity|floatformat:0 }}</td>
+            <td>{% if banner.size %}{{ banner.size }} {{ banner.get_size_unit_display }}{% else %}—{% endif %}</td>
+            <td>{{ banner.unit_price|floatformat:2 }}</td>
+            <td>{{ banner.grand_total|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+    </table>
+
+    <!-- Financial -->
+    <div class="section-title">Financial</div>
+    <table class="financial-table">
+        <tr><th colspan="2">Financial</th></tr>
+        <tr><td>Amount</td><td>{{ banner.base_line_amount|floatformat:2 }}</td></tr>
+        <tr><td>Tax ({{ banner.tax_percentage_display|default:"18% GST" }})</td><td>{{ banner.tax_amount|floatformat:2 }}</td></tr>
+        <tr><td>Other charges</td><td>{{ banner.total_extra_charge|floatformat:2 }}</td></tr>
+        <tr class="total-row"><td>Total Amount</td><td>{{ banner.grand_total|floatformat:2 }}</td></tr>
+    </table>
+
+    <!-- Signatures -->
+    <table class="sign-block">
+        <tr>
+            <td width="50%">Name :</td>
+            <td width="50%">Authorised Signatory:</td>
+        </tr>
+    </table>
+
+    <!-- Notes / Terms and Conditions -->
+    <div class="notes">
+        <div class="section-title" style="margin-top: 6px;" >Important Terms</div>
+        <ul>
+            <li>This is an Activity Sanction Work Order and permits execution only of the approved marketing activity.</li>
+            <li>Payment will be released only after successful execution and approval from the Marketing Department.</li>
+            <li>The vendor must ensure that the activity is legally permissible and complies with applicable regulations.</li>
+            <li>The artwork/display must follow the approved artwork/specifications. Any deviation or correction will be at the vendor's cost.</li>
+            <li>No advance payment will be made.</li>
+            <li>If the work is not completed within the specified time, a 10% penalty on the total payment may be levied.</li>
+            <li>Jeyachandran Retail Private Limited reserves the right to inspect the site/media vehicle.</li>
+            <li>Any government/private authority-related claims, taxes, demands or levies arising from the activity will be the vendor's responsibility.</li>
+            <li>Proof of execution, including dated photographs/newspaper proof where applicable, must be submitted along with the bill.</li>
+            <li>Any dispute must be raised within the specified period after invoice submission.</li>
+            <li>Any change in agreed location, size, quality or specifications requires written approval.</li>
+            <li>GST-compliant invoice must be submitted with the required GST details.</li>
+            <li>Invoice should contain the PO/Work Order number and correct billing details.</li>
+            <li>Manual corrections on invoices are not permitted.</li>
+            <li>GST compliance and timely filing are the vendor's responsibility.</li>
+            <li>Payment will be processed only after the invoice and GST details are properly verified.</li>
+        </ul>
+    </div>
+
+</body>
+</html>
+  

@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% block title %}Payments Upload · AdTrack{% endblock %}
+{% block page_title %}Payments Upload{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/styles/choices.min.css">
+<style>
+/* Match the rest of the form's Bootstrap look */
+.choices__inner { border-radius: 0.375rem; border-color: #ced4da; min-height: calc(1.5em + 0.75rem + 2px); padding: 0.375rem 0.75rem; }
+.choices.is-focused .choices__inner { border-color: #86b7fe; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); }
+.choices__list--dropdown .choices__item--selectable.is-highlighted { background-color: #0d6efd; color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
+    <div>
+        <h4 class="mb-1 text-dark fw-bold">Submit Payment Claim</h4>
+        <p class="text-muted small mb-0">Upload the bill, work order, proof and covering letter for an approved Work Order, then submit for approval.</p>
+    </div>
+    <div class="text-md-end">
+        <div class="text-muted text-uppercase small fw-semibold mb-1" style="font-size: 0.68rem; letter-spacing: 0.05em;">Payment No.</div>
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace fw-bold px-3 py-2" style="border-radius: 0.5rem; font-size: 0.9rem;" title="This is a preview — the final number is assigned on submit.">
+            {{ next_payment_number }}
+        </span>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <form method="post" enctype="multipart/form-data" novalidate id="paymentForm">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <!-- Work Order reference -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-file-earmark-text me-2"></i>Work Order Reference</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.work_order.id_for_label }}" class="form-label fw-semibold text-secondary">Work Order Number <span class="text-danger">*</span></label>
+                            {{ form.work_order }}
+                            {% for error in form.work_order.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold text-secondary">Proposal Number</label>
+                            <div class="form-control bg-light fw-semibold text-dark" id="proposalNumberDisplay" style="cursor: default;">—</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Uploads -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-cloud-upload me-2"></i>Documents</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.bill_file.id_for_label }}" class="form-label fw-semibold text-secondary">Bill Upload <span class="text-danger">*</span></label>
+                            {{ form.bill_file }}
+                            <div class="form-text">Image or PDF, up to 15 MB.</div>
+                            {% for error in form.bill_file.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.work_order_file.id_for_label }}" class="form-label fw-semibold text-secondary">Work Order Upload <span class="text-danger">*</span></label>
+                            {{ form.work_order_file }}
+                            <div class="form-text">Image or PDF, up to 15 MB.</div>
+                            {% for error in form.work_order_file.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.proof_file.id_for_label }}" class="form-label fw-semibold text-secondary">Proof Upload <span class="text-danger">*</span></label>
+                            {{ form.proof_file }}
+                            <div class="form-text">Image or PDF, up to 15 MB.</div>
+                            {% for error in form.proof_file.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.covering_letter_file.id_for_label }}" class="form-label fw-semibold text-secondary">Covering Letter Upload <span class="text-danger">*</span></label>
+                            {{ form.covering_letter_file }}
+                            <div class="form-text">Image or PDF, up to 15 MB.</div>
+                            {% for error in form.covering_letter_file.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Remarks -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-clipboard-check me-2"></i>Remarks</h6>
+                </div>
+                <div class="card-body p-4">
+                    <label for="{{ form.remarks.id_for_label }}" class="form-label fw-semibold text-secondary">Remarks <span class="text-danger">*</span></label>
+                    {{ form.remarks }}
+                    <div class="form-text">Required — a short note for the reviewer.</div>
+                    {% for error in form.remarks.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex justify-content-end gap-2 pt-2 mb-5">
+                <a href="{% url 'payment_list' %}" class="btn btn-outline-danger px-4">
+                    <i class="bi bi-x-lg me-1"></i>Cancel
+                </a>
+                <button type="submit" class="btn btn-primary px-4">
+                    <i class="bi bi-send-check me-1"></i>Submit for Approval
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var workOrderSelect = document.getElementById('{{ form.work_order.id_for_label }}');
+    var proposalDisplay = document.getElementById('proposalNumberDisplay');
+
+    if (workOrderSelect) {
+        // Read each option's proposal number into a plain lookup map
+        // BEFORE Choices.js touches the select — Choices.js rebuilds the
+        // <option> elements it manages internally and doesn't promise to
+        // preserve custom data-* attributes on them, so reading
+        // data-proposal off the live DOM after that would be unreliable.
+        // workOrderSelect.value (the work order id) is always kept in
+        // sync by Choices.js though, so look the proposal number up by
+        // that instead.
+        var proposalByWorkOrderId = {};
+        Array.prototype.forEach.call(workOrderSelect.options, function (opt) {
+            proposalByWorkOrderId[opt.value] = opt.getAttribute('data-proposal') || '';
+        });
+
+        function updateProposalNumber() {
+            if (!proposalDisplay) return;
+            var proposalNumber = proposalByWorkOrderId[workOrderSelect.value];
+            proposalDisplay.textContent = proposalNumber || '—';
+        }
+
+        // Choices.js turns the plain <select> into a type-to-search combo
+        // box — it keeps the original <select> in the DOM (hidden) as the
+        // real source of truth for the form submission and still fires a
+        // normal 'change' event on it, so the Proposal Number auto-fill
+        // above keeps working unchanged.
+        if (window.Choices) {
+            new Choices(workOrderSelect, {
+                searchEnabled: true,
+                shouldSort: false,
+                itemSelectText: '',
+                placeholder: true,
+                searchPlaceholderValue: 'Type to search work orders…',
+            });
+        }
+        workOrderSelect.addEventListener('change', updateProposalNumber);
+        updateProposalNumber();
+    }
+});
+</script>
+{% endblock %}

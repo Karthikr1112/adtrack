@@ -4,15 +4,17 @@ from django.shortcuts import render
 from io import BytesIO
 
 from django.shortcuts import get_object_or_404, redirect
+from django.core.paginator import Paginator
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.views.generic import ListView, DetailView, CreateView
-from django.db.models import Sum, Prefetch, DecimalField
-from django.db.models.functions import Coalesce
 from django.urls import reverse_lazy, reverse
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
+from django.template.loader import render_to_string
 from django.conf import settings
 
 import openpyxl
@@ -20,81 +22,83 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
 from accounts.decorators import role_required
-from accounts.permissions import user_has_permission
-from .models import Banner, BannerPlacement, PlacementPhoto, BannerCost
-from .forms import (
-    BannerForm, BannerPlacementForm, PlacementPhotoForm, BannerCostForm,
-    validate_photo_upload,
-)
+from accounts.permissions import user_has_permission, reviewable_stages, can_edit_record, is_personal_view
+from .models import Proposal, ProposalItem, Campaign, Vendor, Category, Subcategory, Department, Medium, Store, WorkOrder
+from .forms import BannerForm, validate_caption_file_error
+from . import workflow
+
+
+_LOGO_DATA_URI = None
+
+
+def _logo_data_uri():
+    """Base64 data URI for the company logo mark — embedded directly in the
+    PDF (rather than referenced by static URL) since xhtml2pdf has no
+    link_callback configured to resolve STATIC_URL paths on disk."""
+    global _LOGO_DATA_URI
+    if _LOGO_DATA_URI is None:
+        import base64
+        from pathlib import Path
+
+        logo_path = Path(settings.BASE_DIR) / 'static' / 'img' / 'image.png'
+        encoded = base64.b64encode(logo_path.read_bytes()).decode('ascii')
+        _LOGO_DATA_URI = f'data:image/png;base64,{encoded}'
+    return _LOGO_DATA_URI
 
 
 def _detail_queryset():
-    return Banner.objects.select_related('created_by').prefetch_related(
-        Prefetch(
-            'placements',
-            queryset=BannerPlacement.objects.select_related('placed_by').prefetch_related('photos')
-        ),
-        'costs',
-    )
+    return Proposal.objects.select_related('created_by', 'campaign', 'vendor', 'category', 'subcategory', 'department', 'current_step__role')
 
 
-def _detail_context(banner, **overrides):
-    """Shared context for the banner detail page (Overview only) and its inline
-    per-placement Add Photo forms — used by the detail view and upload_photo.
-    """
-    total = banner.costs.aggregate(
-        total=Sum(Coalesce('printing_cost', 0, output_field=DecimalField())) +
-              Sum(Coalesce('installation_cost', 0, output_field=DecimalField())) +
-              Sum(Coalesce('rental_cost', 0, output_field=DecimalField()))
-    )['total'] or 0
-    context = {
-        'banner': banner,
-        'total_spend': total,
-        'photo_form': PlacementPhotoForm(),
-        'open_photo_placement_id': None,
-        'photo_error_placement_id': None,
-    }
-    context.update(overrides)
-    return context
-
-
-def _wizard_context(wizard_banner, wizard_step, **overrides):
-    """Shared context for the Add Banner page's wizard steps (Banner Details -> Add Placement
-    -> Add Cost), all rendered on banner_add.html so the flow never leaves that page.
-    """
-    context = {
-        'wizard_banner': wizard_banner,
-        'wizard_step': wizard_step,
-        'placement_form': BannerPlacementForm(),
-        'cost_form': BannerCostForm(),
-    }
-    context.update(overrides)
-    return context
+def _design_file_attachment(banner):
+    """The design file uploaded at whichever step requires one (if any) —
+    shown as its own card, separate from the Approval Timeline. Most
+    recent one, in case the proposal went through rework and was
+    re-approved more than once."""
+    action = banner.approval_history.filter(
+        workflow_step__require_attachment_on_approve=True, action='approve',
+    ).exclude(attachment='').order_by('-created_at').first()
+    return action.attachment if action else None
 
 
 def _filtered_banners(request):
-    """Shared filter/sort logic for the Banners list page and its exports, so
-    an export always matches exactly what's currently on screen (same status,
-    type, search, and sort as the list view the user is looking at).
+    """Shared filter/sort logic for the Proposals list page and its exports, so
+    an export always matches exactly what's currently on screen.
+
+    Same ownership rule as the Dashboard: a plain Executive only sees
+    proposals they created themselves; anyone with broader responsibility
+    (reviewer/admin/superuser) sees every proposal, org-wide.
     """
-    # Only costs are shown on the list page and in exports — prefetching
-    # placements here would load every placement row for nothing.
-    queryset = Banner.objects.select_related('created_by').prefetch_related('costs')
+    queryset = _detail_queryset()
+    if is_personal_view(request.user):
+        queryset = queryset.filter(created_by=request.user)
 
-    status = request.GET.get('status')
-    if status:
-        queryset = queryset.filter(status=status)
+    approval_status = request.GET.get('approval_status')
+    if approval_status:
+        queryset = queryset.filter(approval_status=approval_status)
 
-    banner_type = request.GET.get('banner_type')
-    if banner_type:
-        queryset = queryset.filter(banner_type=banner_type)
+    campaign_id = request.GET.get('campaign')
+    if campaign_id:
+        queryset = queryset.filter(campaign_id=campaign_id)
+
+    vendor_id = request.GET.get('vendor')
+    if vendor_id:
+        queryset = queryset.filter(vendor_id=vendor_id)
+
+    category_id = request.GET.get('category')
+    if category_id:
+        queryset = queryset.filter(category_id=category_id)
+
+    department_id = request.GET.get('department')
+    if department_id:
+        queryset = queryset.filter(department_id=department_id)
 
     search = request.GET.get('q', '').strip()
     if search:
-        queryset = queryset.filter(poster_name__icontains=search)
+        queryset = queryset.filter(location__icontains=search)
 
     sort = request.GET.get('sort', '-created_at')
-    if sort not in ('-created_at', 'created_at', 'poster_name', '-poster_name'):
+    if sort not in ('-created_at', 'created_at', 'location', '-location', '-grand_total', 'grand_total'):
         sort = '-created_at'
     queryset = queryset.order_by(sort)
 
@@ -102,36 +106,30 @@ def _filtered_banners(request):
 
 
 class BannerListView(LoginRequiredMixin, ListView):
-    """
-    Main list page. All roles can view banners.
-    Uses select_related for the FK (created_by) and
-    prefetch_related for the reverse FKs (placements, costs) — this turns
-    what would be N+1 queries (one extra query per banner) into a fixed,
-    small number of queries regardless of how many banners exist.
-    """
-    model = Banner
+    """Main Proposals list page. All roles with can_view_banners can view it."""
+    model = Proposal
     template_name = 'banners/banner_list.html'
     context_object_name = 'banners'
-    paginate_by = 10
+    paginate_by = 25
 
     def get_queryset(self):
         return _filtered_banners(self.request)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['banner_type_choices'] = Banner.BANNER_TYPE_CHOICES
-        context['status_choices'] = Banner.STATUS_CHOICES
+        context['approval_choices'] = Proposal.APPROVAL_CHOICES
+        context['campaign_choices'] = Campaign.objects.all()
+        context['vendor_choices'] = Vendor.objects.all()
+        context['category_choices'] = Category.objects.all()
+        context['department_choices'] = Department.objects.all()
         querydict = self.request.GET.copy()
         querydict.pop('page', None)
         context['querystring'] = querydict.urlencode()
         return context
 
+
 class BannerDetailView(LoginRequiredMixin, DetailView):
-    """
-    Detail page — pulls the banner plus every placement and its photos,
-    plus every cost record, in a bounded number of queries.
-    """
-    model = Banner
+    model = Proposal
     template_name = 'banners/banner_detail.html'
     context_object_name = 'banner'
 
@@ -140,183 +138,127 @@ class BannerDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context.update(_detail_context(self.object))
-        try:
-            context['open_photo_placement_id'] = int(self.request.GET.get('photo', 0)) or None
-        except (TypeError, ValueError):
-            context['open_photo_placement_id'] = None
+        context['my_review_stages'] = reviewable_stages(self.request.user)
+        context['history'] = self.object.approval_history.select_related('actor').all()
+        context['design_file'] = _design_file_attachment(self.object)
         return context
 
 
+def _extract_submitted_items(post_data):
+    store_names = post_data.getlist('item_store_name')
+    heights = post_data.getlist('item_height')
+    widths = post_data.getlist('item_width')
+    medium_ids = post_data.getlist('item_medium')
+    size_units = post_data.getlist('item_size_unit')
+    quantities = post_data.getlist('item_quantity')
+    unit_prices = post_data.getlist('item_unit_price')
+    extra_charges = post_data.getlist('item_extra_charge')
+    tax_rates = post_data.getlist('item_tax_rate')
+    num_items = max(len(heights), len(widths), len(store_names), len(tax_rates), 1)
+    items = []
+    for i in range(num_items):
+        s_name = store_names[i] if i < len(store_names) else ''
+        h = heights[i] if i < len(heights) else ''
+        w = widths[i] if i < len(widths) else ''
+        m = medium_ids[i] if i < len(medium_ids) else ''
+        u = size_units[i] if i < len(size_units) else 'feet'
+        q = quantities[i] if i < len(quantities) else '1'
+        p = unit_prices[i] if i < len(unit_prices) else '0'
+        ec = extra_charges[i] if i < len(extra_charges) else ''
+        tr = tax_rates[i] if i < len(tax_rates) else '0.18'
+        try:
+            sqft = f"{(float(h) * float(w)):.2f}" if (h and w) else '0.00'
+        except (ValueError, TypeError):
+            sqft = '0.00'
+        try:
+            base_total = ((float(sqft) * float(q) * float(p)) + (float(ec) if ec else 0))
+            tax_amt = base_total * float(tr)
+            line_grand = base_total + tax_amt
+            line_total_str = f"{base_total:.2f}"
+            tax_amt_str = f"{tax_amt:.2f}"
+            grand_total_str = f"{line_grand:.2f}"
+        except (ValueError, TypeError):
+            line_total_str = '0.00'
+            tax_amt_str = '0.00'
+            grand_total_str = '0.00'
+        items.append({
+            'item_number': i + 1,
+            'store_name': s_name,
+            'medium_id': int(m) if m and str(m).isdigit() else '',
+            'height': h,
+            'width': w,
+            'square_feet': sqft,
+            'size_unit': u,
+            'quantity': q,
+            'unit_price': p,
+            'extra_charge': ec,
+            'tax_rate': tr,
+            'tax_amount': tax_amt_str,
+            'total_amount': line_total_str,
+            'grand_total': grand_total_str,
+        })
+    return items
+
+
 class BannerCreateView(LoginRequiredMixin, CreateView):
-    """
-    Step 1 of the Add Banner wizard. Only Admin and Manager can create banners.
-    On success, stays on this same URL (banner_add) but with ?step=placement&banner_id=<new id>
-    so steps 2 and 3 (Add Placement, Add Cost) render right below on the same page.
-    """
-    model = Banner
+    """Add Proposal — a single page with every field on it. Submitting
+    always saves as Pending Approval (the model's default); there is no
+    separate 'reject' action here, only a Cancel link back to the list."""
+    model = Proposal
     form_class = BannerForm
     template_name = 'banners/banner_add.html'
 
     def dispatch(self, request, *args, **kwargs):
-        """Check if user can add banners."""
         if request.user.is_authenticated and not user_has_permission(request.user, 'can_add_banner'):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        banner_id = self.request.GET.get('banner_id')
-        wizard_banner = get_object_or_404(Banner, id=banner_id) if banner_id else None
-        wizard_step = self.request.GET.get('step', 'banner')
-        context.update(_wizard_context(wizard_banner, wizard_step))
+        context['next_proposal_number'] = Proposal.next_proposal_number_preview()
+        context['mediums'] = Medium.objects.all()
+        context['stores'] = Store.objects.all()
+        context['size_units'] = Proposal.SIZE_UNIT_CHOICES
+        context['tax_rates'] = Proposal.TAX_RATE_CHOICES
+        if self.request.method == 'POST':
+            context['items'] = _extract_submitted_items(self.request.POST)
+        else:
+            context['items'] = [{
+                'item_number': 1,
+                'store_name': '',
+                'medium_id': '',
+                'height': '',
+                'width': '',
+                'square_feet': '0.00',
+                'size_unit': 'feet',
+                'quantity': 1,
+                'unit_price': 0,
+                'extra_charge': '',
+                'tax_rate': '0.18',
+                'tax_amount': '0.00',
+                'total_amount': '0.00',
+                'grand_total': '0.00',
+            }]
         return context
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
-        messages.success(self.request, 'Banner created. Now add a placement and cost below (optional).')
-        return super().form_valid(form)
+        # form.save() happens inside super().form_valid() — the proposal
+        # number isn't assigned until then (it's derived from the new row's
+        # own id), so the confirmation message is built after, not before.
+        response = super().form_valid(form)
+        workflow.submit(self.object, self.request.user)
+        messages.success(
+            self.request,
+            f'Proposal {self.object.proposal_number} submitted for approval.'
+        )
+
+        workflow.invalidate_pending_counts_for_step(self.object.current_step)
+
+        return response
 
     def get_success_url(self):
-        return f"{reverse('banner_add')}?step=placement&banner_id={self.object.pk}"
-
-
-@role_required('can_add_placement')
-def add_placement(request, banner_id):
-    """Only reachable from the Add Banner wizard (banner_add.html) — the banner
-    detail page is view-only and has no way to add further placements.
-    """
-    banner = get_object_or_404(Banner, id=banner_id)
-
-    if request.method == 'POST':
-        form = BannerPlacementForm(request.POST)
-        # site_photo bypasses the form, so validate every file explicitly —
-        # and before saving anything, so a bad file doesn't leave a
-        # half-saved step.
-        site_photos = request.FILES.getlist('site_photo')
-        photo_error = _validate_photo_list(site_photos)
-        if form.is_valid() and photo_error is None:
-            placement = form.save(commit=False)
-            placement.banner = banner
-            placement.placed_by = request.user
-            placement.save()
-            banner.status = 'placed'
-            banner.save(update_fields=['status'])
-
-            _save_placement_photos(
-                placement, site_photos,
-                request.POST.get('site_photo_latitude'),
-                request.POST.get('site_photo_longitude'),
-                request.user,
-            )
-
-            messages.success(request, 'Placement recorded.')
-            return redirect(f"{reverse('banner_add')}?step=cost&banner_id={banner.id}")
-
-        if photo_error:
-            form.add_error(None, f'Site photo: {photo_error}')
-        messages.error(request, 'Please correct the errors below.')
-        context = _wizard_context(banner, 'placement', placement_form=form)
-        return render(request, 'banners/banner_add.html', context)
-
-    return redirect('banner_detail', pk=banner.id)
-
-
-@role_required('can_upload_photo')
-def upload_photo(request, placement_id):
-    placement = get_object_or_404(BannerPlacement, id=placement_id)
-
-    if request.method == 'POST':
-        form = PlacementPhotoForm(request.POST, request.FILES)
-        photos = request.FILES.getlist('photo')
-        photo_error = _validate_photo_list(photos)
-        if form.is_valid() and photos and photo_error is None:
-            _save_placement_photos(
-                placement, photos,
-                form.cleaned_data.get('photo_latitude'),
-                form.cleaned_data.get('photo_longitude'),
-                request.user,
-            )
-            count = len(photos)
-            messages.success(
-                request,
-                f"{count} photo{'s' if count > 1 else ''} uploaded and location checked."
-            )
-            return redirect('banner_detail', pk=placement.banner_id)
-
-        if photo_error:
-            form.add_error(None, photo_error)
-        messages.error(request, 'Please correct the errors below.')
-        banner = get_object_or_404(_detail_queryset(), id=placement.banner_id)
-        context = _detail_context(banner, photo_form=form, photo_error_placement_id=placement.id)
-        return render(request, 'banners/banner_detail.html', context)
-
-    url = reverse('banner_detail', kwargs={'pk': placement.banner_id})
-    return redirect(f"{url}?photo={placement.id}")
-
-
-def _validate_photo_list(files):
-    """Validates every uploaded photo; returns the first error message
-    (prefixed with the file name) or None if all are acceptable."""
-    for f in files:
-        error = validate_photo_upload(f)
-        if error:
-            return f'{f.name}: {error}'
-    return None
-
-
-def _save_placement_photos(placement, files, latitude, longitude, user):
-    """Creates one PlacementPhoto per uploaded file. All photos from one
-    submission share the same GPS pair (they're taken at the same spot)."""
-    for f in files:
-        photo = PlacementPhoto(
-            placement=placement,
-            photo=f,
-            photo_latitude=latitude or None,
-            photo_longitude=longitude or None,
-            uploaded_by=user,
-        )
-        photo.location_verified = verify_location(placement, photo)
-        photo.save()
-
-
-def verify_location(placement, photo):
-    """Returns True if the photo's GPS is within 100m of the claimed placement location."""
-    if not (placement.latitude and placement.longitude and photo.photo_latitude and photo.photo_longitude):
-        return False
-    try:
-        from geopy.distance import geodesic
-        distance = geodesic(
-            (float(placement.latitude), float(placement.longitude)),
-            (float(photo.photo_latitude), float(photo.photo_longitude))
-        ).meters
-        return distance <= 100
-    except Exception:
-        return False
-
-
-@role_required('can_add_cost')
-def add_cost(request, banner_id):
-    """Only reachable from the Add Banner wizard (banner_add.html) — the banner
-    detail page is view-only and has no way to add further costs.
-    """
-    banner = get_object_or_404(Banner, id=banner_id)
-
-    if request.method == 'POST':
-        form = BannerCostForm(request.POST, request.FILES)
-        if form.is_valid():
-            cost = form.save(commit=False)
-            cost.banner = banner
-            cost.recorded_by = request.user
-            cost.save()
-            messages.success(request, 'Banner setup complete.')
-            return redirect('banner_detail', pk=banner.id)
-
-        messages.error(request, 'Please correct the errors below.')
-        context = _wizard_context(banner, 'cost', cost_form=form)
-        return render(request, 'banners/banner_add.html', context)
-
-    return redirect('banner_detail', pk=banner.id)
+        return reverse('banner_detail', kwargs={'pk': self.object.pk})
 
 
 def _parse_dashboard_date(value):
@@ -332,13 +274,14 @@ def _parse_dashboard_date(value):
 @role_required('can_view_dashboard')
 def dashboard(request):
     import json
-    from django.db.models import Count, Sum, DecimalField, DateField, Q
-    from django.db.models.functions import Coalesce, TruncMonth, TruncDate
+    from django.db.models import Count, Sum
+    from django.db.models.functions import TruncMonth
+    from django.utils import timezone
+    from payments.models import PaymentClaim
 
-    # Get query parameters for filtering
     search_query = request.GET.get('q', '')
     date_range = request.GET.get('date_range', '')
-    status_filter = request.GET.get('status', 'all')
+    approval_filter = request.GET.get('status', 'all')
 
     start_date = None
     end_date = None
@@ -351,60 +294,83 @@ def dashboard(request):
             start_date = _parse_dashboard_date(parts[0].strip())
             end_date = start_date
 
-    # Base querysets
-    banners = Banner.objects.select_related('created_by')
+    # A plain Executive (can add proposals, but doesn't review anything and
+    # doesn't manage users) sees only their OWN documents on the dashboard —
+    # everyone else (Admin/Coordinator/Head/CEO/superuser) keeps the
+    # org-wide view this dashboard has always shown. Same shared rule now
+    # applied to the Proposals list/export and Payments Records pages.
+    personal_view = is_personal_view(request.user)
 
-    # Apply filters to banners
+    banners = Proposal.objects.select_related('created_by', 'campaign', 'category', 'department', 'current_step__role')
+    if personal_view:
+        banners = banners.filter(created_by=request.user)
+
     if search_query:
-        banners = banners.filter(poster_name__icontains=search_query)
+        banners = banners.filter(location__icontains=search_query)
     if start_date:
         banners = banners.filter(created_at__date__gte=start_date)
     if end_date:
         banners = banners.filter(created_at__date__lte=end_date)
-    if status_filter and status_filter != 'all':
-        banners = banners.filter(status=status_filter)
+    if approval_filter and approval_filter != 'all':
+        banners = banners.filter(approval_status=approval_filter)
 
-    # Total Spend calculated only from filtered banners
-    total_spend = BannerCost.objects.filter(banner__in=banners).aggregate(
-        total=Sum(Coalesce('printing_cost', 0, output_field=DecimalField())) +
-              Sum(Coalesce('installation_cost', 0, output_field=DecimalField())) +
-              Sum(Coalesce('rental_cost', 0, output_field=DecimalField()))
-    )['total'] or 0
+    # "Total Grand Total" is real, committed spend — only proposals that
+    # actually cleared the full approval chain count. A rejected or
+    # still-pending proposal's grand_total was never actually spent, so it
+    # must not inflate this number.
+    total_spend = banners.filter(approval_status='approved').aggregate(total=Sum('grand_total'))['total'] or 0
 
-    # 1. Spend Breakdown and Banner Counts by Banner Type
-    type_costs = BannerCost.objects.filter(banner__in=banners).values('banner__banner_type').annotate(
-        total=Sum(
-            Coalesce('printing_cost', 0, output_field=DecimalField()) +
-            Coalesce('installation_cost', 0, output_field=DecimalField()) +
-            Coalesce('rental_cost', 0, output_field=DecimalField())
-        ),
-        count=Count('banner', distinct=True)
+    # 1. Spend Breakdown and Proposal Counts by Category
+    category_costs = banners.exclude(category__isnull=True).values('category__name').annotate(
+        total=Sum('grand_total'), count=Count('id')
     )
-    type_display_map = dict(Banner.BANNER_TYPE_CHOICES)
-    vendor_labels = []
-    vendor_data = []
-    vendor_counts = []
-    for tc in type_costs:
-        bt = tc['banner__banner_type']
-        name = type_display_map.get(bt, bt) if bt else "Unknown"
-        vendor_labels.append(name)
-        vendor_data.append(float(tc['total']))
-        vendor_counts.append(tc['count'])
+    category_labels = []
+    category_data = []
+    category_counts = []
+    for cc in category_costs:
+        category_labels.append(cc['category__name'] or 'Unknown')
+        category_data.append(float(cc['total'] or 0))
+        category_counts.append(cc['count'])
 
-    # 2. Monthly Spend and Banner Counts Trend
-    # paid_on is a DateField and created_at a DateTimeField, so created_at is
-    # truncated to a date first — Coalesce refuses mixed types otherwise.
-    monthly_trend = BannerCost.objects.filter(banner__in=banners).annotate(
-        date_ref=Coalesce('paid_on', TruncDate('created_at'), output_field=DateField())
-    ).annotate(
-        month=TruncMonth('date_ref')
-    ).values('month').annotate(
-        total=Sum(
-            Coalesce('printing_cost', 0, output_field=DecimalField()) +
-            Coalesce('installation_cost', 0, output_field=DecimalField()) +
-            Coalesce('rental_cost', 0, output_field=DecimalField())
-        ),
-        count=Count('banner', distinct=True)
+    # 1b. Same breakdown, but grouped by Vendor instead of Category.
+    vendor_costs = banners.exclude(vendor__isnull=True).values('vendor__name').annotate(
+        total=Sum('grand_total'), count=Count('id')
+    )
+    vendor_name_labels = []
+    vendor_name_data = []
+    vendor_name_counts = []
+    for vc in vendor_costs:
+        vendor_name_labels.append(vc['vendor__name'] or 'Unknown')
+        vendor_name_data.append(float(vc['total'] or 0))
+        vendor_name_counts.append(vc['count'])
+
+    # 1c. Same breakdown again, grouped by Campaign.
+    campaign_costs = banners.exclude(campaign__isnull=True).values('campaign__name').annotate(
+        total=Sum('grand_total'), count=Count('id')
+    )
+    campaign_labels = []
+    campaign_data = []
+    campaign_counts = []
+    for cpc in campaign_costs:
+        campaign_labels.append(cpc['campaign__name'] or 'Unknown')
+        campaign_data.append(float(cpc['total'] or 0))
+        campaign_counts.append(cpc['count'])
+
+    # 1d. Same breakdown again, grouped by Department.
+    department_costs = banners.exclude(department__isnull=True).values('department__name').annotate(
+        total=Sum('grand_total'), count=Count('id')
+    )
+    department_labels = []
+    department_data = []
+    department_counts = []
+    for dc in department_costs:
+        department_labels.append(dc['department__name'] or 'Unknown')
+        department_data.append(float(dc['total'] or 0))
+        department_counts.append(dc['count'])
+
+    # 2. Monthly Spend and Proposal Count Trend
+    monthly_trend = banners.annotate(month=TruncMonth('created_at')).values('month').annotate(
+        total=Sum('grand_total'), count=Count('id')
     ).order_by('month')
 
     trend_labels = []
@@ -416,170 +382,305 @@ def dashboard(request):
             trend_data.append(float(item['total'] or 0))
             trend_counts.append(item['count'])
 
-    # 3. Status Distribution (based on filtered banners)
-    status_counts = banners.values('status').annotate(count=Count('id'))
-    status_display_map = dict(Banner.STATUS_CHOICES)
+    # 3. Approval Status Distribution — for 'in_review' rows, broken down
+    # by WHICH step they're waiting at (however many steps the Approval
+    # Flow currently has), since 'in_review' alone doesn't say who's
+    # holding it up.
+    status_display_map = dict(Proposal.APPROVAL_CHOICES)
+    # Colors assigned here (not guessed client-side from label text) since
+    # an in-review step's label is now just whatever role name the
+    # Approval Flow assigns — no fixed words to pattern-match against.
+    BUCKET_COLORS = {'rework': '#0dcaf0', 'approved': '#198754', 'rejected': '#dc3545'}
+    STEP_COLOR_PALETTE = ['#ffc107', '#fd7e14', '#6f42c1', '#d63384', '#20c997', '#6610f2']
+    counts_by_status = {}
     status_labels = []
     status_data = []
-    for sc in status_counts:
-        status_labels.append(status_display_map.get(sc['status'], sc['status']))
-        status_data.append(sc['count'])
+    status_colors = []
 
-    # 4. Geotag Verification Rate (filtered by placements of filtered banners)
-    photo_counts = PlacementPhoto.objects.filter(placement__banner__in=banners).values('location_verified').annotate(count=Count('id'))
-    verified_count = 0
-    unverified_count = 0
-    for pc in photo_counts:
-        if pc['location_verified']:
-            verified_count = pc['count']
-        else:
-            unverified_count = pc['count']
+    for bucket in ('rework', 'approved', 'rejected'):
+        count = banners.filter(approval_status=bucket).count()
+        counts_by_status[bucket] = count
+        if count:
+            status_labels.append(status_display_map[bucket])
+            status_data.append(count)
+            status_colors.append(BUCKET_COLORS[bucket])
 
-    # Aggregate counts in a single query
-    banner_stats = banners.aggregate(
-        total=Count('id'),
-        placed=Count('id', filter=Q(status='placed')),
-        planned=Count('id', filter=Q(status='planned')),
-    )
+    in_review_by_step = banners.filter(approval_status='in_review').exclude(
+        current_step__isnull=True
+    ).values('current_step__order', 'current_step__role__name').annotate(count=Count('id')).order_by('current_step__order')
+    in_review_total = 0
+    for i, row in enumerate(in_review_by_step):
+        in_review_total += row['count']
+        status_labels.append(f"Pending {row['current_step__role__name']} Review")
+        status_data.append(row['count'])
+        status_colors.append(STEP_COLOR_PALETTE[i % len(STEP_COLOR_PALETTE)])
+    counts_by_status['in_review'] = in_review_total
+
+    # "Pending" on the dashboard KPI card means anywhere in the review
+    # chain or awaiting rework — anything not yet at a final state.
+    in_progress_stages = ('in_review', 'rework')
+
+    # 4. Same Spend/Proposals breakdown again, grouped by Subcategory —
+    # labeled "Category / Subcategory" (matching Subcategory.__str__) since
+    # the same subcategory name can exist under different categories.
+    subcategory_costs = banners.exclude(subcategory__isnull=True).values(
+        'subcategory__name', 'subcategory__category__name',
+    ).annotate(total=Sum('grand_total'), count=Count('id'))
+    subcategory_labels = []
+    subcategory_data = []
+    subcategory_counts = []
+    for sc in subcategory_costs:
+        category_name = sc['subcategory__category__name']
+        sub_name = sc['subcategory__name'] or 'Unknown'
+        subcategory_labels.append(f'{category_name} / {sub_name}' if category_name else sub_name)
+        subcategory_data.append(float(sc['total'] or 0))
+        subcategory_counts.append(sc['count'])
+
+    # 5. Month-over-month spend delta, shown as a badge on the Total Spend card.
+    today = timezone.localdate()
+    this_month_start = today.replace(day=1)
+    if this_month_start.month == 1:
+        last_month_start = this_month_start.replace(year=this_month_start.year - 1, month=12)
+    else:
+        last_month_start = this_month_start.replace(month=this_month_start.month - 1)
+    this_month_spend = banners.filter(
+        approval_status='approved', created_at__date__gte=this_month_start,
+    ).aggregate(total=Sum('grand_total'))['total'] or 0
+    last_month_spend = banners.filter(
+        approval_status='approved', created_at__date__gte=last_month_start, created_at__date__lt=this_month_start,
+    ).aggregate(total=Sum('grand_total'))['total'] or 0
+    spend_delta_pct = round((this_month_spend - last_month_spend) / last_month_spend * 100, 1) if last_month_spend > 0 else None
+
+    # ---- Payments ----
+    # Same filter bar as Proposals (search/date range/status) applies here
+    # too, so the Payments widgets never show all-time data while every
+    # Proposal widget above them is scoped to the chosen filters.
+    payment_claims = PaymentClaim.objects.select_related('work_order', 'work_order__proposal')
+    if personal_view:
+        payment_claims = payment_claims.filter(created_by=request.user)
+    if search_query:
+        payment_claims = payment_claims.filter(work_order__proposal__location__icontains=search_query)
+    if start_date:
+        payment_claims = payment_claims.filter(created_at__date__gte=start_date)
+    if end_date:
+        payment_claims = payment_claims.filter(created_at__date__lte=end_date)
+    if approval_filter and approval_filter != 'all':
+        payment_claims = payment_claims.filter(approval_status=approval_filter)
+
+    payment_status_display_map = dict(PaymentClaim.APPROVAL_CHOICES)
+    payment_status_labels = []
+    payment_status_data = []
+    payment_status_colors = []
+    payment_counts_by_status = {}
+
+    for bucket in ('rework', 'approved', 'rejected'):
+        count = payment_claims.filter(approval_status=bucket).count()
+        payment_counts_by_status[bucket] = count
+        if count:
+            payment_status_labels.append(payment_status_display_map[bucket])
+            payment_status_data.append(count)
+            payment_status_colors.append(BUCKET_COLORS[bucket])
+
+    payment_in_review_by_step = payment_claims.filter(approval_status='in_review').exclude(
+        current_step__isnull=True
+    ).values('current_step__order', 'current_step__role__name').annotate(count=Count('id')).order_by('current_step__order')
+    payment_in_review_total = 0
+    for i, row in enumerate(payment_in_review_by_step):
+        payment_in_review_total += row['count']
+        payment_status_labels.append(f"Pending {row['current_step__role__name']} Review")
+        payment_status_data.append(row['count'])
+        payment_status_colors.append(STEP_COLOR_PALETTE[i % len(STEP_COLOR_PALETTE)])
+    payment_counts_by_status['in_review'] = payment_in_review_total
+
+    # ---- "Needs Your Attention" — items this user can act on right now,
+    # across both Proposals and Payments.
+    my_stages = reviewable_stages(request.user)
+    attention_proposals = []
+    attention_payments = []
+    if my_stages:
+        attention_proposals = list(
+            Proposal.objects.filter(current_step_id__in=my_stages)
+            .select_related('campaign', 'current_step__role').order_by('-created_at')[:5]
+        )
+        attention_payments = list(
+            PaymentClaim.objects.filter(current_step_id__in=my_stages)
+            .select_related('work_order', 'work_order__proposal', 'current_step__role').order_by('-created_at')[:5]
+        )
 
     context = {
-        'total_banners': banner_stats['total'],
-        'placed_count': banner_stats['placed'],
-        'planned_count': banner_stats['planned'],
+        'is_personal_view': personal_view,
+        'total_banners': sum(counts_by_status.values()),
+        'approved_count': counts_by_status.get('approved', 0),
+        'pending_count': sum(counts_by_status.get(s, 0) for s in in_progress_stages),
+        'rejected_count': counts_by_status.get('rejected', 0),
+        'payments_pending_count': sum(payment_counts_by_status.get(s, 0) for s in in_progress_stages),
         'total_spend': total_spend,
-        'recent_banners': banners.prefetch_related('costs')[:5],
-        
-        # Current filters context
+        'spend_delta_pct': spend_delta_pct,
+        'recent_banners': banners.order_by('-created_at')[:5],
+
         'search_query': search_query,
         'date_range': date_range,
-        'selected_status': status_filter,
-        'status_choices': Banner.STATUS_CHOICES,
-        
-        # Chart JSON Data
-        'chart_vendor_labels': json.dumps(vendor_labels),
-        'chart_vendor_data': json.dumps(vendor_data),
-        'chart_vendor_counts': json.dumps(vendor_counts),
+        'selected_status': approval_filter,
+        'status_choices': Proposal.APPROVAL_CHOICES,
+
+        'chart_vendor_labels': json.dumps(category_labels),
+        'chart_vendor_data': json.dumps(category_data),
+        'chart_vendor_counts': json.dumps(category_counts),
         'chart_trend_labels': json.dumps(trend_labels),
         'chart_trend_data': json.dumps(trend_data),
         'chart_trend_counts': json.dumps(trend_counts),
         'chart_status_labels': json.dumps(status_labels),
         'chart_status_data': json.dumps(status_data),
-        'chart_verified_count': verified_count,
-        'chart_unverified_count': unverified_count,
+        'chart_status_colors': json.dumps(status_colors),
+
+        'chart_vendor_name_labels': json.dumps(vendor_name_labels),
+        'chart_vendor_name_data': json.dumps(vendor_name_data),
+        'chart_vendor_name_counts': json.dumps(vendor_name_counts),
+        'chart_subcategory_labels': json.dumps(subcategory_labels),
+        'chart_subcategory_data': json.dumps(subcategory_data),
+        'chart_subcategory_counts': json.dumps(subcategory_counts),
+        'chart_campaign_labels': json.dumps(campaign_labels),
+        'chart_campaign_data': json.dumps(campaign_data),
+        'chart_campaign_counts': json.dumps(campaign_counts),
+        'chart_department_labels': json.dumps(department_labels),
+        'chart_department_data': json.dumps(department_data),
+        'chart_department_counts': json.dumps(department_counts),
+
+        # Payments
+        'chart_payment_status_labels': json.dumps(payment_status_labels),
+        'chart_payment_status_data': json.dumps(payment_status_data),
+        'chart_payment_status_colors': json.dumps(payment_status_colors),
+
+        'attention_proposals': attention_proposals,
+        'attention_payments': attention_payments,
     }
     return render(request, 'banners/dashboard.html', context)
 
 
 @role_required('can_edit_banner')
 def banner_edit(request, pk):
-    banner = get_object_or_404(Banner, pk=pk)
-    placement = banner.placements.first()
-    cost = banner.costs.first()
+    banner = get_object_or_404(Proposal, pk=pk)
+    if not can_edit_record(request.user, banner):
+        raise PermissionDenied(
+            "You can only edit proposals you created, and only before they're approved."
+        )
+    needs_rework = banner.approval_status == 'rework'
 
     if request.method == 'POST':
-        form = BannerForm(request.POST, instance=banner)
-        
-        # Check if placement data is provided or placement exists
-        has_placement = placement is not None or any(request.POST.get(f) for f in ['location_name', 'address', 'placed_date'])
-        if has_placement:
-            placement_form = BannerPlacementForm(request.POST, instance=placement)
-        else:
-            placement_form = BannerPlacementForm(instance=placement)
-            
-        # Check if cost data is provided or cost exists
-        has_cost = cost is not None or any(request.POST.get(f) for f in ['printing_cost', 'installation_cost', 'rental_cost'])
-        if has_cost:
-            cost_form = BannerCostForm(request.POST, request.FILES, instance=cost)
-        else:
-            cost_form = BannerCostForm(instance=cost)
-
-        form_valid = form.is_valid()
-        placement_valid = placement_form.is_valid() if has_placement else True
-        cost_valid = cost_form.is_valid() if has_cost else True
-
-        # site_photo bypasses the forms, so validate every file explicitly
-        # before anything is saved.
-        site_photos = request.FILES.getlist('site_photo')
-        photo_error = _validate_photo_list(site_photos)
-        if photo_error:
-            placement_form.add_error(None, f'Site photo: {photo_error}')
-
-        if form_valid and placement_valid and cost_valid and photo_error is None:
+        form = BannerForm(request.POST, request.FILES, instance=banner)
+        if form.is_valid():
             form.save()
-
-            if has_placement:
-                pl = placement_form.save(commit=False)
-                pl.banner = banner
-                if not pl.placed_by:
-                    pl.placed_by = request.user
-                pl.save()
-
-                # Save site photos if uploaded
-                _save_placement_photos(
-                    pl, site_photos,
-                    request.POST.get('site_photo_latitude'),
-                    request.POST.get('site_photo_longitude'),
-                    request.user,
-                )
-                
-            if has_cost:
-                co = cost_form.save(commit=False)
-                co.banner = banner
-                if not co.recorded_by:
-                    co.recorded_by = request.user
-                co.save()
-                
-            messages.success(request, 'Banner details, placement, and cost updated successfully.')
+            if needs_rework:
+                # Editing a reworked proposal resubmits it — back to the
+                # first configured step.
+                workflow.resubmit(banner, request.user)
+                workflow.invalidate_pending_counts_for_step(banner.current_step)
+                messages.success(request, f'Proposal {banner.proposal_number} resubmitted for approval.')
+            else:
+                messages.success(request, 'Proposal updated successfully.')
             return redirect('banner_detail', pk=banner.pk)
-        else:
-            messages.error(request, 'Please correct the errors below.')
+        messages.error(request, 'Please correct the errors below.')
+        items = _extract_submitted_items(request.POST)
     else:
         form = BannerForm(instance=banner)
-        placement_form = BannerPlacementForm(instance=placement)
-        cost_form = BannerCostForm(instance=cost)
+        banner_items = banner.items.all()
+        if banner_items.exists():
+            items = [{
+                'item_number': it.item_number,
+                'store_name': it.store_name or banner.location or '',
+                'medium_id': it.medium_id or '',
+                'height': it.height,
+                'width': it.width,
+                'square_feet': f"{it.square_feet:.2f}",
+                'size_unit': it.size_unit,
+                'quantity': it.quantity,
+                'unit_price': it.unit_price,
+                'extra_charge': it.extra_charge if it.extra_charge else '',
+                'tax_rate': f"{it.tax_rate:.2f}" if it.tax_rate is not None else '0.18',
+                'tax_amount': f"{it.tax_amount:.2f}",
+                'total_amount': f"{it.total_amount:.2f}",
+                'grand_total': f"{it.grand_total:.2f}",
+            } for it in banner_items]
+        else:
+            items = [{
+                'item_number': 1,
+                'store_name': banner.location or '',
+                'medium_id': '',
+                'height': banner.size.split('x')[0].strip() if 'x' in str(banner.size) else '10',
+                'width': banner.size.split('x')[1].strip() if 'x' in str(banner.size) else '1',
+                'square_feet': '10.00',
+                'size_unit': banner.size_unit or 'feet',
+                'quantity': banner.quantity or 1,
+                'unit_price': banner.unit_price or 0,
+                'extra_charge': banner.extra_charge if banner.extra_charge else '',
+                'tax_rate': f"{banner.tax_rate:.2f}" if banner.tax_rate is not None else '0.18',
+                'tax_amount': f"{banner.tax_amount:.2f}",
+                'total_amount': f"{banner.total_amount:.2f}",
+                'grand_total': f"{banner.grand_total:.2f}",
+            }]
+
+    # (field name, bound field, currently-stored file or None) for each
+    # caption — lets the edit template show a download link for what's
+    # already uploaded, next to the "replace it" file input.
+    captions = [
+        (name, form[name], getattr(banner, name) if getattr(banner, name) else None)
+        for name in ('caption_1', 'caption_2', 'caption_3')
+    ]
+    summary_attachment_file = banner.summary_attachment if banner.summary_attachment else None
+    location_photo_file = banner.location_photo if banner.location_photo else None
 
     return render(request, 'banners/banner_edit.html', {
         'form': form,
-        'placement_form': placement_form,
-        'cost_form': cost_form,
-        'banner': banner
+        'banner': banner,
+        'captions': captions,
+        'summary_attachment_file': summary_attachment_file,
+        'location_photo_file': location_photo_file,
+        'needs_rework': needs_rework,
+        'rework_note': banner.approval_history.filter(action='rework').order_by('-created_at').first() if needs_rework else None,
+        'mediums': Medium.objects.all(),
+        'stores': Store.objects.all(),
+        'size_units': Proposal.SIZE_UNIT_CHOICES,
+        'tax_rates': Proposal.TAX_RATE_CHOICES,
+        'items': items,
     })
 
 
 @role_required('can_delete_banner')
 def banner_delete(request, pk):
-    banner = get_object_or_404(Banner, pk=pk)
+    banner = get_object_or_404(_detail_queryset(), pk=pk)
     if request.method == 'POST':
         banner.delete()
-        messages.success(request, 'Banner deleted successfully.')
+        messages.success(request, 'Proposal deleted successfully.')
         return redirect('banner_list')
     return render(request, 'banners/banner_confirm_delete.html', {
         'banner': banner
     })
 
 
-STATUS_FILL_COLORS = {
-    'planned': 'FFF3CD',
-    'placed': 'D1E7DD',
-    'removed': 'E2E3E5',
-    'damaged': 'F8D7DA',
+APPROVAL_FILL_COLORS = {
+    'in_review': 'FFF3CD',
+    'rework': 'CFE2FF',
+    'approved': 'D1E7DD',
+    'rejected': 'F8D7DA',
 }
 
 
 @login_required
 def export_banners_excel(request):
     """
-    Exports the Banners list as an .xlsx file, honoring whatever status/type/
-    search/sort filters are currently applied — the same queryset BannerListView
-    uses, so the export always matches what's on screen.
+    Exports the Proposals list as an .xlsx file, honoring whatever filters are
+    currently applied — the same queryset BannerListView uses, so the export
+    always matches what's on screen.
     """
     banners = _filtered_banners(request)
 
     workbook = openpyxl.Workbook()
     sheet = workbook.active
-    sheet.title = 'Banners'
+    sheet.title = 'Proposals'
 
-    headers = ['Poster Name', 'Type', 'Size', 'Status', 'Created By', 'Total Spend (₹)']
+    headers = ['Proposal #', 'Campaign', 'Vendor', 'Category', 'Subcategory', 'Department', 'Start Date', 'End Date', 'Size',
+               'Qty', 'Unit Price (₹)', 'Total (₹)', 'Tax 18% (₹)', 'Grand Total (₹)',
+               'Location / Store', 'Status', 'Created By', 'Remarks']
     header_fill = PatternFill(start_color='0D6EFD', end_color='0D6EFD', fill_type='solid')
     header_font = Font(color='FFFFFF', bold=True)
     for col_index, header in enumerate(headers, start=1):
@@ -590,23 +691,33 @@ def export_banners_excel(request):
 
     row_index = 2
     for banner in banners:
-        total_spend = sum((cost.total_cost for cost in banner.costs.all()), 0)
-        sheet.cell(row=row_index, column=1, value=banner.poster_name)
-        sheet.cell(row=row_index, column=2, value=banner.get_banner_type_display())
-        sheet.cell(row=row_index, column=3, value=f'{banner.width} x {banner.height} {banner.get_size_unit_display()}')
-        status_cell = sheet.cell(row=row_index, column=4, value=banner.get_status_display())
+        sheet.cell(row=row_index, column=1, value=banner.proposal_number or '—')
+        sheet.cell(row=row_index, column=2, value=banner.campaign.name if banner.campaign else '—')
+        sheet.cell(row=row_index, column=3, value=banner.vendor.name if banner.vendor else '—')
+        sheet.cell(row=row_index, column=4, value=banner.category.name if banner.category else '—')
+        sheet.cell(row=row_index, column=5, value=str(banner.subcategory) if banner.subcategory else '—')
+        sheet.cell(row=row_index, column=6, value=banner.department.name if banner.department else '—')
+        sheet.cell(row=row_index, column=7, value=banner.start_date.strftime('%Y-%m-%d') if banner.start_date else '')
+        sheet.cell(row=row_index, column=8, value=banner.end_date.strftime('%Y-%m-%d') if banner.end_date else '')
+        sheet.cell(row=row_index, column=9, value=f'{banner.size} ({banner.get_size_unit_display()})' if banner.size else '')
+        sheet.cell(row=row_index, column=10, value=banner.quantity)
+        sheet.cell(row=row_index, column=11, value=float(banner.unit_price))
+        sheet.cell(row=row_index, column=12, value=float(banner.total_amount))
+        sheet.cell(row=row_index, column=13, value=float(banner.tax_amount))
+        sheet.cell(row=row_index, column=14, value=float(banner.grand_total))
+        sheet.cell(row=row_index, column=15, value=banner.location)
+        status_cell = sheet.cell(row=row_index, column=16, value=banner.stage_label)
         status_cell.fill = PatternFill(
-            start_color=STATUS_FILL_COLORS.get(banner.status, 'FFFFFF'),
-            end_color=STATUS_FILL_COLORS.get(banner.status, 'FFFFFF'),
+            start_color=APPROVAL_FILL_COLORS.get(banner.approval_status, 'FFFFFF'),
+            end_color=APPROVAL_FILL_COLORS.get(banner.approval_status, 'FFFFFF'),
             fill_type='solid',
         )
-        sheet.cell(row=row_index, column=5,
+        sheet.cell(row=row_index, column=17,
                    value=banner.created_by.username if banner.created_by else '—')
-        spend_cell = sheet.cell(row=row_index, column=6, value=float(total_spend))
-        spend_cell.number_format = '₹#,##0.00'
+        sheet.cell(row=row_index, column=18, value=banner.remarks)
         row_index += 1
 
-    column_widths = [28, 16, 22, 14, 16, 18]
+    column_widths = [16, 22, 18, 16, 20, 18, 12, 12, 16, 6, 14, 14, 12, 14, 24, 16, 16, 30]
     for col_index, width in enumerate(column_widths, start=1):
         sheet.column_dimensions[get_column_letter(col_index)].width = width
 
@@ -620,7 +731,238 @@ def export_banners_excel(request):
         buffer.read(),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
-    response['Content-Disposition'] = 'attachment; filename="banners.xlsx"'
+    response['Content-Disposition'] = 'attachment; filename="proposals.xlsx"'
     return response
 
 
+@login_required
+def banner_approvals(request):
+    from accounts.permissions import can_review_anything
+    if not can_review_anything(request.user):
+        raise PermissionDenied("You don't have permission to review proposals.")
+
+    steps = reviewable_stages(request.user)
+
+    if request.user.is_superuser:
+        banners = Proposal.objects.filter(approval_status='in_review')
+    else:
+        banners = Proposal.objects.filter(
+            approval_status='in_review'
+        ).filter(
+            Q(awaiting_final_approver=True, final_approver=request.user) |
+            Q(awaiting_final_approver=False, current_step_id__in=steps)
+        ).distinct()
+
+    banners = banners.select_related(
+        'created_by', 'campaign', 'vendor', 'category', 'department', 'current_step__role', 'final_approver'
+    ).order_by('current_step__order', '-created_at')
+    page_obj = Paginator(banners, 25).get_page(request.GET.get('page'))
+    return render(request, 'banners/banner_approvals.html', {'banners': page_obj, 'page_obj': page_obj})
+
+
+@login_required
+def proposal_review(request, pk):
+    """The 'summary box before approval' screen — full proposal details,
+    the complete approval history (so a later reviewer sees earlier
+    comments), and the step-appropriate action buttons with a comment box."""
+    banner = get_object_or_404(
+        Proposal.objects.select_related('created_by', 'campaign', 'vendor', 'category', 'subcategory', 'department', 'current_step__role', 'final_approver'),
+        pk=pk,
+    )
+    step = banner.current_step
+    my_steps = reviewable_stages(request.user)
+
+    if banner.approval_status == 'in_review':
+        if banner.awaiting_final_approver:
+            can_act = (request.user == banner.final_approver) or request.user.is_superuser
+        elif step:
+            can_act = (step.id in my_steps) or request.user.is_superuser
+        else:
+            can_act = False
+    else:
+        can_act = False
+
+    can_rework = banner.awaiting_final_approver or (bool(step) and step.allow_rework)
+    can_reject = banner.awaiting_final_approver or (bool(step) and getattr(step, 'can_reject', step.order > 2))
+    attachment_required_on_approve = (not banner.awaiting_final_approver) and bool(step) and step.require_attachment_on_approve
+    has_next_step = (not banner.awaiting_final_approver) and bool(step) and workflow.next_step(step) is not None
+    is_first_step = (not banner.awaiting_final_approver) and bool(step) and workflow.previous_step(step) is None
+    is_next_level = (not banner.awaiting_final_approver) and bool(step) and step.order in (1, 2)
+    is_level_3 = (not banner.awaiting_final_approver) and bool(step) and step.order == 3
+    is_final_step = banner.awaiting_final_approver or (bool(step) and (step.order > 3 or (workflow.next_step(step) is None and not banner.final_approver)))
+
+    final_approver_users = []
+    if is_level_3:
+        final_approver_users = User.objects.filter(
+            is_active=True
+        ).filter(
+            Q(profile__is_admin_created=True) | Q(is_superuser=True)
+        ).exclude(
+            username__startswith='RR-'
+        ).select_related('profile__role').order_by(
+            'profile__role__name', 'first_name', 'username'
+        )
+
+    return render(request, 'banners/proposal_review.html', {
+        'banner': banner,
+        'history': banner.approval_history.select_related('actor').all(),
+        'design_file': _design_file_attachment(banner),
+        'can_act': can_act,
+        'can_rework': can_rework,
+        'can_reject': can_reject,
+        'stage_label': banner.stage_label,
+        'attachment_required_on_approve': attachment_required_on_approve,
+        'is_first_step': is_first_step,
+        'has_next_step': has_next_step,
+        'is_next_level': is_next_level,
+        'is_level_3': is_level_3,
+        'is_final_step': is_final_step,
+        'final_approver_users': final_approver_users,
+    })
+
+
+@login_required
+def banner_approve_action(request, pk, action):
+    if action not in ('approve', 'reject', 'rework'):
+        raise Http404
+    banner = get_object_or_404(Proposal.objects.select_related('current_step__role', 'final_approver'), pk=pk)
+
+    if banner.approval_status != 'in_review':
+        raise PermissionDenied("This proposal is not currently in review.")
+
+    if banner.awaiting_final_approver:
+        if request.user != banner.final_approver and not request.user.is_superuser:
+            raise PermissionDenied("Only the assigned final approver can act on this proposal.")
+        step = banner.current_step
+    else:
+        step = banner.current_step
+        if step is None:
+            raise PermissionDenied("This proposal has no active review step.")
+        if step.id not in reviewable_stages(request.user) and not request.user.is_superuser:
+            raise PermissionDenied("You don't have permission to act on this proposal at its current stage.")
+
+    if request.method == 'POST':
+        comment = request.POST.get('comment', '').strip()
+        if not comment:
+            messages.error(request, 'A comment is required for every decision.')
+            return redirect('proposal_review', pk=banner.pk)
+
+        if not banner.awaiting_final_approver:
+            if action == 'rework' and not step.allow_rework:
+                raise PermissionDenied("This stage has no rework option.")
+            if action == 'reject' and not getattr(step, 'can_reject', step.order > 2):
+                raise PermissionDenied("Step 1 and Step 2 do not have a reject option.")
+
+            attachment = request.FILES.get('attachment')
+            if step.require_attachment_on_approve and action == 'approve' and not attachment:
+                messages.error(request, 'Please attach the design file (image or PDF) before approving.')
+                return redirect('proposal_review', pk=banner.pk)
+            if attachment:
+                error = validate_caption_file_error(attachment)
+                if error:
+                    messages.error(request, error)
+                    return redirect('proposal_review', pk=banner.pk)
+
+        approver_user = None
+        if not banner.awaiting_final_approver and action == 'approve' and step.order == 3:
+            final_approver_id = request.POST.get('final_approver')
+            if final_approver_id:
+                try:
+                    approver_user = User.objects.get(pk=final_approver_id, is_active=True)
+                    banner.final_approver = approver_user
+                    banner.save(update_fields=['final_approver'])
+                except User.DoesNotExist:
+                    messages.error(request, 'Selected final approver is invalid or inactive.')
+                    return redirect('proposal_review', pk=banner.pk)
+            else:
+                # If unselected, proceed with normal workflow (clear any previously assigned final approver)
+                if banner.final_approver_id is not None:
+                    banner.final_approver = None
+                    banner.save(update_fields=['final_approver'])
+
+        was_awaiting_final = banner.awaiting_final_approver
+        old_step = step
+        old_final_approver_id = banner.final_approver_id
+
+        workflow.apply_action(banner, step, action, request.user, comment=comment, attachment=attachment if not was_awaiting_final else None)
+
+        if action == 'approve':
+            if was_awaiting_final:
+                verb = 'fully approved and Work Order generated'
+            elif old_step.order in (1, 2):
+                upcoming = banner.current_step
+                verb = f'sent to the next level ({upcoming.role.name} review)' if upcoming else 'sent to the next level'
+            elif old_step.order == 3:
+                upcoming = banner.current_step
+                next_name = upcoming.role.name if upcoming else 'next level'
+                if approver_user:
+                    approver_name = approver_user.get_full_name() or approver_user.username
+                    verb = f'approved and sent to {next_name} review (Final approval assigned to {approver_name})'
+                else:
+                    verb = f'approved and sent to {next_name} review'
+            elif old_step.order == 4:
+                if banner.awaiting_final_approver and banner.final_approver:
+                    approver_name = banner.final_approver.get_full_name() or banner.final_approver.username
+                    verb = f'approved by CEO and sent to {approver_name} for final approval'
+                else:
+                    verb = 'fully approved and Work Order generated'
+            else:
+                verb = 'fully approved and Work Order generated'
+        else:
+            verb = {'reject': 'rejected', 'rework': 'sent for rework'}[action]
+        messages.success(request, f'Proposal {banner.proposal_number} {verb}.')
+
+        # Invalidate badges
+        workflow.invalidate_pending_counts_for_step(old_step, user_id=old_final_approver_id)
+        workflow.invalidate_pending_counts_for_step(banner.current_step, user_id=(banner.final_approver_id if banner.awaiting_final_approver else None))
+    return redirect('banner_approvals')
+
+
+def _work_order_queryset():
+    return WorkOrder.objects.select_related(
+        'proposal', 'proposal__campaign', 'proposal__vendor',
+        'proposal__category', 'proposal__subcategory', 'proposal__department', 'proposal__created_by',
+    )
+
+
+@role_required('can_view_banners')
+def work_order_list(request):
+    """Every Work Order generated so far — one per fully-approved proposal.
+
+    Same ownership rule as the Proposals/Payments lists: a plain
+    Executive only sees Work Orders for proposals they created
+    themselves; anyone with broader responsibility (reviewer/admin/
+    superuser) sees every Work Order, org-wide."""
+    orders = _work_order_queryset().order_by('-created_at')
+    if is_personal_view(request.user):
+        orders = orders.filter(proposal__created_by=request.user)
+    page_obj = Paginator(orders, 25).get_page(request.GET.get('page'))
+    return render(request, 'banners/work_order_list.html', {'orders': page_obj, 'page_obj': page_obj})
+
+
+@role_required('can_view_banners')
+def work_order_detail(request, pk):
+    """The on-screen Work Order, with a Download PDF button."""
+    order = get_object_or_404(_work_order_queryset(), pk=pk)
+    return render(request, 'banners/work_order_detail.html', {'order': order, 'banner': order.proposal})
+
+
+@role_required('can_view_banners')
+def work_order_download(request, pk):
+    """Renders the same Work Order as a downloadable PDF."""
+    from xhtml2pdf import pisa
+
+    order = get_object_or_404(_work_order_queryset(), pk=pk)
+    html = render_to_string('banners/work_order_pdf.html', {
+        'order': order, 'banner': order.proposal, 'logo_data_uri': _logo_data_uri(),
+    })
+
+    buffer = BytesIO()
+    result = pisa.CreatePDF(html, dest=buffer)
+    if result.err:
+        messages.error(request, 'Could not generate the PDF. Please try again.')
+        return redirect('work_order_detail', pk=order.pk)
+
+    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{order.po_number}.pdf"'
+    return response

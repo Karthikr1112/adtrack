@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Profile, Role
+from .models import Profile, Role, WorkflowStep
 
 
 @admin.register(Role)
@@ -23,3 +23,9 @@ class ProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'role', 'department', 'phone_number')
     list_filter = ('role',)
     search_fields = ('user__username', 'user__email')
+
+
+@admin.register(WorkflowStep)
+class WorkflowStepAdmin(admin.ModelAdmin):
+    list_display = ('order', 'role', 'allow_rework', 'require_attachment_on_approve')
+    ordering = ('order',)

@@ -1,0 +1,41 @@
+{% comment %}
+The payment Overview card — shared by payment_detail.html and
+payment_review.html so both pages show identical details. Expects: claim.
+{% endcomment %}
+<div class="card border shadow-sm mb-4" style="border-radius: 0.75rem; background-color: #ffffff;">
+    <div class="card-header bg-white py-3 border-bottom">
+        <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-info-circle me-2"></i>Overview</h6>
+    </div>
+    <div class="card-body p-4">
+        <div class="row g-4">
+            <div class="col-6">
+                <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Work Order Number</div>
+                <div class="fw-bold text-dark font-monospace">{{ claim.work_order.po_number|default:"—" }}</div>
+            </div>
+            <div class="col-6">
+                <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Proposal Number</div>
+                <div class="fw-bold text-dark font-monospace">{{ claim.proposal.proposal_number|default:"—" }}</div>
+            </div>
+            <div class="col-6">
+                <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Campaign</div>
+                <div class="fw-bold text-dark">{{ claim.proposal.campaign.name|default:"—" }}</div>
+            </div>
+            <div class="col-6">
+                <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Vendor</div>
+                <div class="fw-bold text-dark">{{ claim.proposal.vendor.name|default:"—" }}</div>
+            </div>
+            <div class="col-6">
+                <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Submitted By</div>
+                <div class="fw-bold text-dark">{{ claim.created_by.username|default:"—" }}</div>
+            </div>
+            <div class="col-6">
+                <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Submitted On</div>
+                <div class="fw-bold text-dark">{{ claim.created_at|date:"d M Y" }}</div>
+            </div>
+            <div class="col-12">
+                <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Remarks</div>
+                <div class="fw-semibold text-dark">{{ claim.remarks|default:"—"|linebreaksbr }}</div>
+            </div>
+        </div>
+    </div>
+</div>

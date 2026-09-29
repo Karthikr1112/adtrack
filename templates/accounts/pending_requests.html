@@ -229,7 +229,7 @@
     </div>
     <span class="count-pill">
         <span class="pulse-dot"></span>
-        {{ users|length }} waiting
+        {{ page_obj.paginator.count }} waiting
     </span>
 </div>
 
@@ -277,6 +277,7 @@
         </div>
         {% endfor %}
     </div>
+    {% include '_pagination.html' with item_label='requests' %}
 {% else %}
     <div class="empty-state">
         <div class="empty-icon"><i class="bi bi-check2-circle"></i></div>

@@ -92,33 +92,36 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.5rem 1.75rem;
+    padding: 1.25rem 1.35rem;
+    gap: 0.75rem;
     z-index: 1;
 }
 
 .kpi-card:hover {
     transform: translateY(-6px);
-    box-shadow: 0 20px 35px -10px rgba(15, 23, 42, 0.1), inset 0 -2px 0 0 rgba(0,0,0,0.01);
     border-color: rgba(226, 232, 240, 1);
 }
 
 .kpi-content {
     position: relative;
     z-index: 2;
+    min-width: 0;
 }
 
 .kpi-title {
-    font-size: 0.72rem;
+    font-size: 0.66rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.04em;
     color: #64748b;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.35rem;
     display: block;
+    line-height: 1.3;
+    min-height: 1.7em;
 }
 
 .kpi-value {
-    font-size: 2rem;
+    font-size: 1.6rem;
     font-weight: 800;
     color: #0f172a;
     margin: 0;
@@ -127,9 +130,10 @@
 }
 
 .kpi-icon-box {
-    width: 60px;
-    height: 60px;
-    border-radius: 1.1rem;
+    width: 46px;
+    height: 46px;
+    flex-shrink: 0;
+    border-radius: 0.9rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -143,29 +147,99 @@
 }
 
 .kpi-icon-box i {
-    font-size: 1.6rem;
+    font-size: 1.25rem;
 }
 
-/* Color Variations */
+/* Color Variations — each variant tints the WHOLE card (not just the
+   icon) and carries its own colored shadow, so the card's color is
+   visible at a glance instead of being a plain white box with a small
+   colored icon in the corner. */
+.kpi-card.blue {
+    background: linear-gradient(135deg, #ffffff 45%, #eff6ff 100%);
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.08), 0 8px 30px 0 rgba(59, 130, 246, 0.22), inset 0 -2px 0 0 rgba(0,0,0,0.02);
+}
+.kpi-card.blue:hover { box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.12), 0 12px 40px 0 rgba(59, 130, 246, 0.32), inset 0 -2px 0 0 rgba(0,0,0,0.01); }
 .kpi-card.blue .kpi-icon-box {
     background: linear-gradient(135deg, #eff6ff, #bfdbfe);
     color: #2563eb;
     box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.1), 0 8px 16px -6px rgba(59, 130, 246, 0.3);
 }
+
+.kpi-card.green {
+    background: linear-gradient(135deg, #ffffff 45%, #f0fdf4 100%);
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.08), 0 8px 30px 0 rgba(34, 197, 94, 0.22), inset 0 -2px 0 0 rgba(0,0,0,0.02);
+}
+.kpi-card.green:hover { box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.12), 0 12px 40px 0 rgba(34, 197, 94, 0.32), inset 0 -2px 0 0 rgba(0,0,0,0.01); }
 .kpi-card.green .kpi-icon-box {
     background: linear-gradient(135deg, #f0fdf4, #bbf7d0);
     color: #16a34a;
     box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.1), 0 8px 16px -6px rgba(34, 197, 94, 0.3);
 }
+
+.kpi-card.yellow {
+    background: linear-gradient(135deg, #ffffff 45%, #fffbeb 100%);
+    box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.08), 0 8px 30px 0 rgba(234, 179, 8, 0.22), inset 0 -2px 0 0 rgba(0,0,0,0.02);
+}
+.kpi-card.yellow:hover { box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.12), 0 12px 40px 0 rgba(234, 179, 8, 0.32), inset 0 -2px 0 0 rgba(0,0,0,0.01); }
 .kpi-card.yellow .kpi-icon-box {
     background: linear-gradient(135deg, #fffbeb, #fef08a);
     color: #d97706;
     box-shadow: inset 0 0 0 1px rgba(234, 179, 8, 0.1), 0 8px 16px -6px rgba(234, 179, 8, 0.3);
 }
+
+.kpi-card.purple {
+    background: linear-gradient(135deg, #ffffff 45%, #faf5ff 100%);
+    box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.08), 0 8px 30px 0 rgba(168, 85, 247, 0.22), inset 0 -2px 0 0 rgba(0,0,0,0.02);
+}
+.kpi-card.purple:hover { box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.12), 0 12px 40px 0 rgba(168, 85, 247, 0.32), inset 0 -2px 0 0 rgba(0,0,0,0.01); }
 .kpi-card.purple .kpi-icon-box {
     background: linear-gradient(135deg, #faf5ff, #e9d5ff);
     color: #9333ea;
     box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.1), 0 8px 16px -6px rgba(168, 85, 247, 0.3);
+}
+
+.kpi-card.teal {
+    background: linear-gradient(135deg, #ffffff 45%, #f0fdfa 100%);
+    box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.08), 0 8px 30px 0 rgba(20, 184, 166, 0.22), inset 0 -2px 0 0 rgba(0,0,0,0.02);
+}
+.kpi-card.teal:hover { box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.12), 0 12px 40px 0 rgba(20, 184, 166, 0.32), inset 0 -2px 0 0 rgba(0,0,0,0.01); }
+.kpi-card.teal .kpi-icon-box {
+    background: linear-gradient(135deg, #f0fdfa, #99f6e4);
+    color: #0d9488;
+    box-shadow: inset 0 0 0 1px rgba(20, 184, 166, 0.1), 0 8px 16px -6px rgba(20, 184, 166, 0.3);
+}
+
+.kpi-card.indigo {
+    background: linear-gradient(135deg, #ffffff 45%, #eef2ff 100%);
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.08), 0 8px 30px 0 rgba(99, 102, 241, 0.22), inset 0 -2px 0 0 rgba(0,0,0,0.02);
+}
+.kpi-card.indigo:hover { box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.12), 0 12px 40px 0 rgba(99, 102, 241, 0.32), inset 0 -2px 0 0 rgba(0,0,0,0.01); }
+.kpi-card.indigo .kpi-icon-box {
+    background: linear-gradient(135deg, #eef2ff, #c7d2fe);
+    color: #4f46e5;
+    box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.1), 0 8px 16px -6px rgba(99, 102, 241, 0.3);
+}
+
+.kpi-card.orange {
+    background: linear-gradient(135deg, #ffffff 45%, #fff7ed 100%);
+    box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.08), 0 8px 30px 0 rgba(249, 115, 22, 0.22), inset 0 -2px 0 0 rgba(0,0,0,0.02);
+}
+.kpi-card.orange:hover { box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.12), 0 12px 40px 0 rgba(249, 115, 22, 0.32), inset 0 -2px 0 0 rgba(0,0,0,0.01); }
+.kpi-card.orange .kpi-icon-box {
+    background: linear-gradient(135deg, #fff7ed, #fed7aa);
+    color: #ea580c;
+    box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.1), 0 8px 16px -6px rgba(249, 115, 22, 0.3);
+}
+
+.kpi-card.red {
+    background: linear-gradient(135deg, #ffffff 45%, #fef2f2 100%);
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.08), 0 8px 30px 0 rgba(239, 68, 68, 0.22), inset 0 -2px 0 0 rgba(0,0,0,0.02);
+}
+.kpi-card.red:hover { box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.12), 0 12px 40px 0 rgba(239, 68, 68, 0.32), inset 0 -2px 0 0 rgba(0,0,0,0.01); }
+.kpi-card.red .kpi-icon-box {
+    background: linear-gradient(135deg, #fef2f2, #fecaca);
+    color: #dc2626;
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.1), 0 8px 16px -6px rgba(239, 68, 68, 0.3);
 }
 
 /* Decorative background glowing orb inside card */
@@ -191,6 +265,40 @@
 .kpi-card.green .kpi-decoration { background: #22c55e; }
 .kpi-card.yellow .kpi-decoration { background: #eab308; }
 .kpi-card.purple .kpi-decoration { background: #a855f7; }
+.kpi-card.teal .kpi-decoration { background: #14b8a6; }
+.kpi-card.indigo .kpi-decoration { background: #6366f1; }
+.kpi-card.orange .kpi-decoration { background: #f97316; }
+.kpi-card.red .kpi-decoration { background: #ef4444; }
+
+.kpi-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.15rem 0.45rem;
+    border-radius: 30px;
+    margin-top: 0.35rem;
+}
+.kpi-delta.up { background: #f0fdf4; color: #16a34a; }
+.kpi-delta.down { background: #fef2f2; color: #dc2626; }
+
+/* Compact list rows — Needs Your Attention widget */
+.mini-activity-item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.mini-activity-item:last-child { border-bottom: none; }
+.mini-activity-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 </style>
 {% endblock %}
@@ -202,7 +310,7 @@
         <span class="bg-transparent border-0 text-secondary pe-1">
             <i class="bi bi-search" style="font-size: 0.8rem;"></i>
         </span>
-        <input type="text" name="q" class="form-control border-0 bg-transparent py-0" style="box-shadow: none;" value="{{ search_query }}" placeholder="Search poster...">
+        <input type="text" name="q" class="form-control border-0 bg-transparent py-0" style="box-shadow: none;" value="{{ search_query }}" placeholder="Search location...">
     </div>
 
     <!-- Date Range Picker -->
@@ -229,51 +337,82 @@
 
 {% block content %}
 <div class="row g-4 mb-4">
-    <!-- Total Banners -->
-    <div class="col-sm-6 col-lg-3">
+    <!-- Total Proposals -->
+    <div class="col-sm-6 col-lg">
         <div class="kpi-card blue">
             <div class="kpi-content">
-                <span class="kpi-title">Total Banners</span>
+                <span class="kpi-title">{% if is_personal_view %}My Proposals{% else %}Total Proposals{% endif %}</span>
                 <h3 class="kpi-value">{{ total_banners }}</h3>
             </div>
             <div class="kpi-icon-box">
-                <i class="bi bi-images"></i>
+                <i class="bi bi-file-earmark-text"></i>
             </div>
             <div class="kpi-decoration"></div>
         </div>
     </div>
-    <!-- Placed -->
-    <div class="col-sm-6 col-lg-3">
+    <!-- Approved -->
+    <div class="col-sm-6 col-lg">
         <div class="kpi-card green">
             <div class="kpi-content">
-                <span class="kpi-title">Placed Banners</span>
-                <h3 class="kpi-value">{{ placed_count }}</h3>
+                <span class="kpi-title">Approved</span>
+                <h3 class="kpi-value">{{ approved_count }}</h3>
             </div>
             <div class="kpi-icon-box">
-                <i class="bi bi-geo-alt-fill"></i>
+                <i class="bi bi-check-circle-fill"></i>
             </div>
             <div class="kpi-decoration"></div>
         </div>
     </div>
-    <!-- Planned -->
-    <div class="col-sm-6 col-lg-3">
+    <!-- Pending Proposal Approval -->
+    <div class="col-sm-6 col-lg">
         <div class="kpi-card yellow">
             <div class="kpi-content">
-                <span class="kpi-title">Planned Banners</span>
-                <h3 class="kpi-value">{{ planned_count }}</h3>
+                <span class="kpi-title">Pending&nbsp;Proposal<br>Approval</span>
+                <h3 class="kpi-value">{{ pending_count }}</h3>
             </div>
             <div class="kpi-icon-box">
-                <i class="bi bi-calendar-event"></i>
+                <i class="bi bi-clock-fill"></i>
+            </div>
+            <div class="kpi-decoration"></div>
+        </div>
+    </div>
+    <!-- Pending Payment Approval -->
+    <div class="col-sm-6 col-lg">
+        <div class="kpi-card indigo">
+            <div class="kpi-content">
+                <span class="kpi-title">Pending&nbsp;Payment<br>Approval</span>
+                <h3 class="kpi-value">{{ payments_pending_count }}</h3>
+            </div>
+            <div class="kpi-icon-box">
+                <i class="bi bi-cash-coin"></i>
+            </div>
+            <div class="kpi-decoration"></div>
+        </div>
+    </div>
+    <!-- Rejected -->
+    <div class="col-sm-6 col-lg">
+        <div class="kpi-card red">
+            <div class="kpi-content">
+                <span class="kpi-title">Rejected</span>
+                <h3 class="kpi-value">{{ rejected_count }}</h3>
+            </div>
+            <div class="kpi-icon-box">
+                <i class="bi bi-x-circle-fill"></i>
             </div>
             <div class="kpi-decoration"></div>
         </div>
     </div>
     <!-- Total Spend -->
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-sm-6 col-lg">
         <div class="kpi-card purple">
             <div class="kpi-content">
-                <span class="kpi-title">Total Spend</span>
+                <span class="kpi-title">Total Amount</span>
                 <h3 class="kpi-value">₹{{ total_spend|floatformat:2 }}</h3>
+                {% if spend_delta_pct != None %}
+                <span class="kpi-delta {% if spend_delta_pct >= 0 %}up{% else %}down{% endif %}">
+                    <i class="bi {% if spend_delta_pct >= 0 %}bi-arrow-up-short{% else %}bi-arrow-down-short{% endif %}"></i>{{ spend_delta_pct }}% vs last month
+                </span>
+                {% endif %}
             </div>
             <div class="kpi-icon-box">
                 <i class="bi bi-currency-rupee"></i>
@@ -283,19 +422,20 @@
     </div>
 </div>
 
+
 <div class="row g-4 mb-4">
-    <!-- Chart 1: Spend Breakdown by Banner Type -->
+    <!-- Chart 5b: Spend Breakdown by Campaign -->
     <div class="col-lg-8">
         <div class="card border shadow-sm h-100" style="border-radius: 0.75rem; background-color: #ffffff;">
-            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                <span class="fw-bold text-dark fs-6" id="vendorChartTitle"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend Breakdown by Banner Type</span>
-                <div class="btn-group btn-group-sm" role="group" aria-label="Vendor Chart Toggle">
-                    <button type="button" class="btn btn-outline-primary active py-1 px-3" id="btnVendorSpend" style="font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem 0 0 0.375rem;">Spend</button>
-                    <button type="button" class="btn btn-outline-primary py-1 px-3" id="btnVendorCount" style="font-size: 0.75rem; font-weight: 600; border-radius: 0 0.375rem 0.375rem 0;">Banners</button>
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span class="fw-bold text-dark fs-6" id="campaignChartTitle"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend by Campaign</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Campaign Chart Toggle">
+                    <button type="button" class="btn btn-outline-primary active py-1 px-3" id="btnCampaignSpend" style="font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem 0 0 0.375rem;">Spend</button>
+                    <button type="button" class="btn btn-outline-primary py-1 px-3" id="btnCampaignCount" style="font-size: 0.75rem; font-weight: 600; border-radius: 0 0.375rem 0.375rem 0;">Proposals</button>
                 </div>
             </div>
             <div class="card-body p-4 d-flex align-items-center justify-content-center" style="min-height: 320px;">
-                <canvas id="vendorSpendChart" style="max-height: 280px; width: 100%;"></canvas>
+                <canvas id="campaignChart" style="max-height: 280px; width: 100%;"></canvas>
             </div>
         </div>
     </div>
@@ -304,7 +444,7 @@
     <div class="col-lg-4">
         <div class="card border shadow-sm h-100" style="border-radius: 0.75rem; background-color: #ffffff;">
             <div class="card-header bg-white py-3 border-bottom">
-                <span class="fw-bold text-dark fs-6"><i class="bi bi-pie-chart-fill me-2 text-primary"></i>Banner Status Distribution</span>
+                <span class="fw-bold text-dark fs-6"><i class="bi bi-pie-chart-fill me-2 text-primary"></i>Approval Status Distribution</span>
             </div>
             <div class="card-body p-4 d-flex align-items-center justify-content-center" style="min-height: 320px;">
                 <div style="width: 100%; max-width: 280px; margin: 0 auto;">
@@ -316,14 +456,130 @@
 </div>
 
 <div class="row g-4 mb-4">
+    <!-- Chart 1: Spend Breakdown by Banner Type -->
+    <div class="col-lg-8">
+        <div class="card border shadow-sm h-100" style="border-radius: 0.75rem; background-color: #ffffff;">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span class="fw-bold text-dark fs-6" id="vendorChartTitle"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend Breakdown by Category</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Category Chart Toggle">
+                    <button type="button" class="btn btn-outline-primary active py-1 px-3" id="btnVendorSpend" style="font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem 0 0 0.375rem;">Spend</button>
+                    <button type="button" class="btn btn-outline-primary py-1 px-3" id="btnVendorCount" style="font-size: 0.75rem; font-weight: 600; border-radius: 0 0.375rem 0.375rem 0;">Proposals</button>
+                </div>
+            </div>
+            <div class="card-body p-4 d-flex align-items-center justify-content-center" style="min-height: 320px;">
+                <canvas id="vendorSpendChart" style="max-height: 280px; width: 100%;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart 6: Payment Status Distribution -->
+    <div class="col-lg-4">
+        <div class="card border shadow-sm h-100" style="border-radius: 0.75rem; background-color: #ffffff;">
+            <div class="card-header bg-white py-3 border-bottom">
+                <span class="fw-bold text-dark fs-6"><i class="bi bi-pie-chart-fill me-2 text-primary"></i>Payment Status Distribution</span>
+            </div>
+            <div class="card-body p-4 d-flex align-items-center justify-content-center" style="min-height: 320px;">
+                <div style="width: 100%; max-width: 280px; margin: 0 auto;">
+                    <canvas id="paymentStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Chart 4: Spend Breakdown by Vendor -->
+    <div class="col-lg-6">
+        <div class="card border shadow-sm h-100" style="border-radius: 0.75rem; background-color: #ffffff;">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span class="fw-bold text-dark fs-6" id="vendorNameChartTitle"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend Breakdown by Vendor</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Vendor Chart Toggle">
+                    <button type="button" class="btn btn-outline-primary active py-1 px-3" id="btnVendorNameSpend" style="font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem 0 0 0.375rem;">Spend</button>
+                    <button type="button" class="btn btn-outline-primary py-1 px-3" id="btnVendorNameCount" style="font-size: 0.75rem; font-weight: 600; border-radius: 0 0.375rem 0.375rem 0;">Proposals</button>
+                </div>
+            </div>
+            <div class="card-body p-4 d-flex align-items-center justify-content-center" style="min-height: 320px;">
+                <canvas id="vendorNameChart" style="max-height: 280px; width: 100%;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart 5: Spend Breakdown by Subcategory -->
+    <div class="col-lg-6">
+        <div class="card border shadow-sm h-100" style="border-radius: 0.75rem; background-color: #ffffff;">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span class="fw-bold text-dark fs-6" id="subcategoryChartTitle"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend by Subcategory</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Subcategory Chart Toggle">
+                    <button type="button" class="btn btn-outline-primary active py-1 px-3" id="btnSubcategorySpend" style="font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem 0 0 0.375rem;">Spend</button>
+                    <button type="button" class="btn btn-outline-primary py-1 px-3" id="btnSubcategoryCount" style="font-size: 0.75rem; font-weight: 600; border-radius: 0 0.375rem 0.375rem 0;">Proposals</button>
+                </div>
+            </div>
+            <div class="card-body p-4 d-flex align-items-center justify-content-center" style="min-height: 320px;">
+                <canvas id="subcategoryChart" style="max-height: 280px; width: 100%;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Chart 6: Spend Breakdown by Department -->
+    <div class="col-lg-8">
+        <div class="card border shadow-sm h-100" style="border-radius: 0.75rem; background-color: #ffffff;">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span class="fw-bold text-dark fs-6" id="departmentChartTitle"><i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend Breakdown by Department</span>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Department Chart Toggle">
+                    <button type="button" class="btn btn-outline-primary active py-1 px-3" id="btnDepartmentSpend" style="font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem 0 0 0.375rem;">Spend</button>
+                    <button type="button" class="btn btn-outline-primary py-1 px-3" id="btnDepartmentCount" style="font-size: 0.75rem; font-weight: 600; border-radius: 0 0.375rem 0.375rem 0;">Proposals</button>
+                </div>
+            </div>
+            <div class="card-body p-4 d-flex align-items-center justify-content-center" style="min-height: 320px;">
+                <canvas id="departmentChart" style="max-height: 280px; width: 100%;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Needs Your Attention — moved alongside the Department chart -->
+    <div class="col-lg-4">
+        <div class="card border shadow-sm h-100" style="border-radius: 0.75rem; background-color: #ffffff; border-left: 4px solid #dc3545 !important;">
+            <div class="card-header bg-white py-3 border-bottom">
+                <span class="fw-bold text-dark fs-6"><i class="bi bi-bell-fill me-2 text-danger"></i>Needs Your Attention</span>
+            </div>
+            <div class="card-body p-4" style="max-height: 320px; overflow-y: auto;">
+                {% for p in attention_proposals %}
+                <div class="mini-activity-item">
+                    <div class="mini-activity-icon bg-warning-subtle text-warning-emphasis"><i class="bi bi-file-earmark-text"></i></div>
+                    <div class="flex-grow-1">
+                        <a href="{% url 'proposal_review' p.pk %}" class="text-decoration-none fw-semibold text-dark small">{{ p.proposal_number }} — {{ p.campaign.name|default:"Untitled Proposal" }}</a>
+                        <div class="text-muted" style="font-size: 0.75rem;">{{ p.stage_label }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% for c in attention_payments %}
+                <div class="mini-activity-item">
+                    <div class="mini-activity-icon bg-info-subtle text-info"><i class="bi bi-cash-stack"></i></div>
+                    <div class="flex-grow-1">
+                        <a href="{% url 'payment_review' c.pk %}" class="text-decoration-none fw-semibold text-dark small">{{ c.payment_number }} — {{ c.work_order.po_number|default:"—" }}</a>
+                        <div class="text-muted" style="font-size: 0.75rem;">{{ c.stage_label }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% if not attention_proposals and not attention_payments %}
+                <div class="text-center text-muted small py-3">Nothing needs your attention right now.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
     <!-- Chart 3: Monthly Campaign Spend Trend -->
     <div class="col-lg-12">
         <div class="card border shadow-sm h-100" style="border-radius: 0.75rem; background-color: #ffffff;">
-            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <span class="fw-bold text-dark fs-6" id="trendChartTitle"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Monthly Spend Trend</span>
                 <div class="btn-group btn-group-sm" role="group" aria-label="Trend Chart Toggle">
                     <button type="button" class="btn btn-outline-primary active py-1 px-3" id="btnTrendSpend" style="font-size: 0.75rem; font-weight: 600; border-radius: 0.375rem 0 0 0.375rem;">Spend</button>
-                    <button type="button" class="btn btn-outline-primary py-1 px-3" id="btnTrendCount" style="font-size: 0.75rem; font-weight: 600; border-radius: 0 0.375rem 0.375rem 0;">Banners</button>
+                    <button type="button" class="btn btn-outline-primary py-1 px-3" id="btnTrendCount" style="font-size: 0.75rem; font-weight: 600; border-radius: 0 0.375rem 0.375rem 0;">Proposals</button>
                 </div>
             </div>
             <div class="card-body p-4 d-flex align-items-center justify-content-center" style="min-height: 320px;">
@@ -335,7 +591,7 @@
 
 <div class="card border shadow-sm" style="border-radius: 0.75rem; background-color: #ffffff;">
     <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-        <span class="fw-bold text-dark fs-6"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Banners</span>
+        <span class="fw-bold text-dark fs-6"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Proposals</span>
         <a href="{% url 'banner_list' %}" class="small text-primary fw-semibold text-decoration-none d-inline-flex align-items-center gap-1">
             View all <i class="bi bi-arrow-right"></i>
         </a>
@@ -344,34 +600,38 @@
         <table class="table table-hover align-middle mb-0">
             <thead>
                 <tr class="table-light text-secondary-emphasis" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
-                    <th class="ps-4 py-3">Poster Name</th>
-                    <th class="py-3">Type</th>
-                    <th class="py-3">Size</th>
+                    <th class="ps-4 py-3">Proposal #</th>
+                    <th class="py-3">Campaign</th>
+                    <th class="py-3">Category</th>
+                    <th class="py-3">Department</th>
+                    <th class="py-3">Location</th>
                     <th class="py-3">Status</th>
                     <th class="py-3">Created By</th>
-                    <th class="py-3">Total Spend</th>
+                    <th class="py-3">Grand Total</th>
                     <th class="pe-4 py-3 text-end">Action</th>
                 </tr>
             </thead>
             <tbody>
                 {% for banner in recent_banners %}
                 <tr style="transition: background-color 0.15s ease;">
-                    <td class="ps-4 py-3 fw-bold text-dark">{{ banner.poster_name }}</td>
-                    <td class="py-3 text-secondary-emphasis" style="font-size: 0.9rem;">{{ banner.get_banner_type_display }}</td>
-                    <td class="py-3 text-secondary-emphasis" style="font-size: 0.9rem;">{{ banner.width }} x {{ banner.height }} {{ banner.get_size_unit_display }}</td>
+                    <td class="ps-4 py-3 fw-semibold text-primary font-monospace" style="font-size: 0.85rem;">{{ banner.proposal_number|default:"—" }}</td>
+                    <td class="py-3 fw-bold text-dark">{{ banner.campaign.name|default:"—" }}</td>
+                    <td class="py-3 text-secondary-emphasis" style="font-size: 0.9rem;">{{ banner.category.name|default:"—" }}</td>
+                    <td class="py-3 text-secondary-emphasis" style="font-size: 0.9rem;">{{ banner.department.name|default:"—" }}</td>
+                    <td class="py-3 text-secondary-emphasis" style="font-size: 0.9rem;">{{ banner.location|default:"—" }}</td>
                     <td class="py-3">
-                        <span class="badge {% if banner.status == 'placed' %}bg-success-subtle text-success border border-success-subtle{% elif banner.status == 'planned' %}bg-warning-subtle text-warning-emphasis border border-warning-subtle{% elif banner.status == 'damaged' %}bg-danger-subtle text-danger-emphasis border border-danger-subtle{% else %}bg-secondary-subtle text-secondary border border-secondary-subtle{% endif %} px-2.5 py-1.5" style="border-radius: 30px; font-weight: 500; font-size: 0.75rem;">
-                            {{ banner.get_status_display }}
+                        <span class="badge {% if banner.approval_status == 'approved' %}bg-success-subtle text-success border border-success-subtle{% elif banner.approval_status == 'rejected' %}bg-danger-subtle text-danger border border-danger-subtle{% elif banner.approval_status == 'rework' %}bg-info-subtle text-info border border-info-subtle{% else %}bg-warning-subtle text-warning-emphasis border border-warning-subtle{% endif %} px-2.5 py-1.5" style="border-radius: 30px; font-weight: 500; font-size: 0.75rem;">
+                            {{ banner.stage_label }}
                         </span>
                     </td>
                     <td class="py-3 text-secondary-emphasis" style="font-size: 0.9rem;">{{ banner.created_by.username }}</td>
-                    <td class="py-3 fw-semibold text-dark">₹{{ banner.costs.all|total_cost_sum|floatformat:2 }}</td>
+                    <td class="py-3 fw-semibold text-dark">₹{{ banner.grand_total|floatformat:2 }}</td>
                     <td class="pe-4 py-3 text-end">
                         <div class="d-flex justify-content-end gap-2 align-items-center">
                             <a href="{% url 'banner_detail' banner.pk %}" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center p-2" title="View Details" style="border-radius: 0.375rem;">
                                 <i class="bi bi-eye" style="font-size: 0.9rem; line-height: 1;"></i>
                             </a>
-                            {% if user|has_permission:"can_edit_banner" %}
+                            {% if banner|can_edit_proposal:user %}
                             <a href="{% url 'banner_edit' banner.pk %}" class="btn btn-sm btn-outline-warning d-inline-flex align-items-center justify-content-center p-2" title="Edit" style="border-radius: 0.375rem;">
                                 <i class="bi bi-pencil" style="font-size: 0.9rem; line-height: 1;"></i>
                             </a>
@@ -381,9 +641,9 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-5">
+                    <td colspan="8" class="text-center text-muted py-5">
                         <i class="bi bi-images fs-1 text-muted mb-2 d-block"></i>
-                        No banners recorded yet.
+                        No proposals recorded yet.
                     </td>
                 </tr>
                 {% endfor %}
@@ -415,6 +675,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const dangerColor = '#dc3545';
     const infoColor = '#0dcaf0';
     const grayColor = '#6c757d';
+
+    // Each doughnut slice's color is computed server-side (see dashboard()
+    // in banners/views.py) and passed straight through as chart_status_colors
+    // / chart_payment_status_colors — the approval steps are configurable
+    // now, so there are no fixed words like "Coordinator"/"CEO" left to
+    // pattern-match against on the client.
 
     // Tooltip configuration shared across charts
     const commonTooltip = {
@@ -465,7 +731,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Draw Label
                 ctx.font = "600 10px 'Inter', sans-serif";
                 ctx.fillStyle = "#64748b";
-                ctx.fillText("BANNERS", centerX, centerY + 12);
+                ctx.fillText("PROPOSALS", centerX, centerY + 12);
                 
                 ctx.save();
             }
@@ -563,7 +829,7 @@ document.addEventListener('DOMContentLoaded', function() {
             btnVendorSpend.addEventListener('click', function() {
                 btnVendorSpend.classList.add('active');
                 btnVendorCount.classList.remove('active');
-                vendorChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend Breakdown by Banner Type';
+                vendorChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend Breakdown by Category';
                 
                 vendorChart.data.datasets[0].data = vendorData;
                 vendorChart.options.plugins.tooltip.callbacks.label = function(context) {
@@ -580,11 +846,11 @@ document.addEventListener('DOMContentLoaded', function() {
             btnVendorCount.addEventListener('click', function() {
                 btnVendorCount.classList.add('active');
                 btnVendorSpend.classList.remove('active');
-                vendorChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Banner Count by Banner Type';
-                
+                vendorChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Proposal Count by Category';
+
                 vendorChart.data.datasets[0].data = vendorCounts;
                 vendorChart.options.plugins.tooltip.callbacks.label = function(context) {
-                    return ' Banners: ' + context.raw;
+                    return ' Proposals: ' + context.raw;
                 };
                 vendorChart.options.scales.y.ticks.callback = function(value) {
                     return Number.isInteger(value) ? value : null;
@@ -712,12 +978,12 @@ document.addEventListener('DOMContentLoaded', function() {
             btnTrendCount.addEventListener('click', function() {
                 btnTrendCount.classList.add('active');
                 btnTrendSpend.classList.remove('active');
-                trendChartTitle.innerHTML = '<i class="bi bi-graph-up-arrow me-2 text-primary"></i>Monthly Banner Placements';
-                
+                trendChartTitle.innerHTML = '<i class="bi bi-graph-up-arrow me-2 text-primary"></i>Monthly Proposal Count';
+
                 trendChart.data.datasets[0].data = trendCounts;
-                trendChart.data.datasets[0].label = 'Banners Placed';
+                trendChart.data.datasets[0].label = 'Proposals Submitted';
                 trendChart.options.plugins.tooltip.callbacks.label = function(context) {
-                    return ' Banners: ' + context.raw;
+                    return ' Proposals: ' + context.raw;
                 };
                 trendChart.options.scales.y.ticks.callback = function(value) {
                     return Number.isInteger(value) ? value : null;
@@ -731,26 +997,19 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('monthlySpendChart').parentElement.innerHTML = '<div class="text-muted small">No trend data available</div>';
     }
 
-    // 3. Banner Status Distribution
+    // 3. Approval Status Distribution
     const statusLabels = {{ chart_status_labels|safe }};
     const statusData = {{ chart_status_data|safe }};
-    
-    if (statusData.length > 0) {
-        const colors = statusLabels.map(label => {
-            const l = label.toLowerCase();
-            if (l.includes('placed')) return successColor;
-            if (l.includes('planned')) return warningColor;
-            if (l.includes('damaged')) return dangerColor;
-            return grayColor;
-        });
+    const statusColors = {{ chart_status_colors|safe }};
 
+    if (statusData.length > 0) {
         new Chart(document.getElementById('statusDistributionChart'), {
             type: 'doughnut',
             data: {
                 labels: statusLabels,
                 datasets: [{
                     data: statusData,
-                    backgroundColor: colors,
+                    backgroundColor: statusColors,
                     borderWidth: 2,
                     borderColor: '#ffffff',
                     hoverOffset: 6,
@@ -778,7 +1037,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         ...commonTooltip,
                         callbacks: {
                             label: function(context) {
-                                return ' Banners: ' + context.raw;
+                                return ' Proposals: ' + context.raw;
                             }
                         }
                     }
@@ -789,6 +1048,400 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         document.getElementById('statusDistributionChart').parentElement.innerHTML = '<div class="text-muted small">No status data available</div>';
     }
+
+    // 4. Spend Breakdown by Vendor — same Spend/Proposals toggle as the Category chart above
+    const vendorNameLabels = {{ chart_vendor_name_labels|safe }};
+    const vendorNameData = {{ chart_vendor_name_data|safe }};
+    const vendorNameCounts = {{ chart_vendor_name_counts|safe }};
+    let vendorNameChart = null;
+
+    if (vendorNameData.length > 0 && document.getElementById('vendorNameChart')) {
+        const vendorNameCtx = document.getElementById('vendorNameChart').getContext('2d');
+        const vendorNameGradient = vendorNameCtx.createLinearGradient(0, 0, 0, 280);
+        vendorNameGradient.addColorStop(0, '#0d9488');
+        vendorNameGradient.addColorStop(1, 'rgba(13, 148, 136, 0.15)');
+
+        vendorNameChart = new Chart(vendorNameCtx, {
+            type: 'bar',
+            data: {
+                labels: vendorNameLabels,
+                datasets: [{
+                    data: vendorNameData,
+                    backgroundColor: vendorNameGradient,
+                    borderColor: '#0d9488',
+                    borderWidth: 1.5,
+                    borderRadius: 6,
+                    barThickness: 28,
+                    hoverBackgroundColor: '#0f766e'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0, 0, 0, 0.04)', drawTicks: false },
+                        border: { dash: [5, 5] },
+                        ticks: {
+                            callback: function(value) { return '₹' + Number(value).toLocaleString('en-IN'); },
+                            font: { family: "'Inter', sans-serif", size: 11 },
+                            color: '#64748b'
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { family: "'Inter', sans-serif", size: 11, weight: 600 }, color: '#475569' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        ...commonTooltip,
+                        callbacks: { label: function(context) { return ' Spend: ₹' + Number(context.raw).toLocaleString('en-IN'); } }
+                    }
+                }
+            }
+        });
+
+        const btnVendorNameSpend = document.getElementById('btnVendorNameSpend');
+        const btnVendorNameCount = document.getElementById('btnVendorNameCount');
+        const vendorNameChartTitle = document.getElementById('vendorNameChartTitle');
+
+        if (btnVendorNameSpend && btnVendorNameCount) {
+            btnVendorNameSpend.addEventListener('click', function() {
+                btnVendorNameSpend.classList.add('active');
+                btnVendorNameCount.classList.remove('active');
+                vendorNameChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend Breakdown by Vendor';
+                vendorNameChart.data.datasets[0].data = vendorNameData;
+                vendorNameChart.options.plugins.tooltip.callbacks.label = function(context) {
+                    return ' Spend: ₹' + Number(context.raw).toLocaleString('en-IN');
+                };
+                vendorNameChart.options.scales.y.ticks.callback = function(value) { return '₹' + Number(value).toLocaleString('en-IN'); };
+                vendorNameChart.options.scales.y.ticks.precision = undefined;
+                vendorNameChart.options.scales.y.ticks.stepSize = undefined;
+                vendorNameChart.update();
+            });
+            btnVendorNameCount.addEventListener('click', function() {
+                btnVendorNameCount.classList.add('active');
+                btnVendorNameSpend.classList.remove('active');
+                vendorNameChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Proposal Count by Vendor';
+                vendorNameChart.data.datasets[0].data = vendorNameCounts;
+                vendorNameChart.options.plugins.tooltip.callbacks.label = function(context) { return ' Proposals: ' + context.raw; };
+                vendorNameChart.options.scales.y.ticks.callback = function(value) { return Number.isInteger(value) ? value : null; };
+                vendorNameChart.options.scales.y.ticks.precision = 0;
+                vendorNameChart.options.scales.y.ticks.stepSize = 1;
+                vendorNameChart.update();
+            });
+        }
+    } else if (document.getElementById('vendorNameChart')) {
+        document.getElementById('vendorNameChart').parentElement.innerHTML = '<div class="text-muted small">No vendor data available</div>';
+    }
+
+    // 6. Spend Breakdown by Department — same Spend/Proposals toggle as
+    // the Vendor/Category charts above.
+    const departmentLabels = {{ chart_department_labels|safe }};
+    const departmentData = {{ chart_department_data|safe }};
+    const departmentCounts = {{ chart_department_counts|safe }};
+    let departmentChart = null;
+
+    if (departmentData.length > 0 && document.getElementById('departmentChart')) {
+        const departmentCtx = document.getElementById('departmentChart').getContext('2d');
+        const departmentGradient = departmentCtx.createLinearGradient(0, 0, 0, 280);
+        departmentGradient.addColorStop(0, '#6610f2');
+        departmentGradient.addColorStop(1, 'rgba(102, 16, 242, 0.15)');
+
+        departmentChart = new Chart(departmentCtx, {
+            type: 'bar',
+            data: {
+                labels: departmentLabels,
+                datasets: [{
+                    data: departmentData,
+                    backgroundColor: departmentGradient,
+                    borderColor: '#6610f2',
+                    borderWidth: 1.5,
+                    borderRadius: 6,
+                    barThickness: 28,
+                    hoverBackgroundColor: '#59099e'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0, 0, 0, 0.04)', drawTicks: false },
+                        border: { dash: [5, 5] },
+                        ticks: {
+                            callback: function(value) { return '₹' + Number(value).toLocaleString('en-IN'); },
+                            font: { family: "'Inter', sans-serif", size: 11 },
+                            color: '#64748b'
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { family: "'Inter', sans-serif", size: 11, weight: 600 }, color: '#475569' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        ...commonTooltip,
+                        callbacks: { label: function(context) { return ' Spend: ₹' + Number(context.raw).toLocaleString('en-IN'); } }
+                    }
+                }
+            }
+        });
+
+        const btnDepartmentSpend = document.getElementById('btnDepartmentSpend');
+        const btnDepartmentCount = document.getElementById('btnDepartmentCount');
+        const departmentChartTitle = document.getElementById('departmentChartTitle');
+
+        if (btnDepartmentSpend && btnDepartmentCount) {
+            btnDepartmentSpend.addEventListener('click', function() {
+                btnDepartmentSpend.classList.add('active');
+                btnDepartmentCount.classList.remove('active');
+                departmentChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend Breakdown by Department';
+                departmentChart.data.datasets[0].data = departmentData;
+                departmentChart.options.plugins.tooltip.callbacks.label = function(context) {
+                    return ' Spend: ₹' + Number(context.raw).toLocaleString('en-IN');
+                };
+                departmentChart.options.scales.y.ticks.callback = function(value) { return '₹' + Number(value).toLocaleString('en-IN'); };
+                departmentChart.options.scales.y.ticks.precision = undefined;
+                departmentChart.options.scales.y.ticks.stepSize = undefined;
+                departmentChart.update();
+            });
+            btnDepartmentCount.addEventListener('click', function() {
+                btnDepartmentCount.classList.add('active');
+                btnDepartmentSpend.classList.remove('active');
+                departmentChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Proposal Count by Department';
+                departmentChart.data.datasets[0].data = departmentCounts;
+                departmentChart.options.plugins.tooltip.callbacks.label = function(context) { return ' Proposals: ' + context.raw; };
+                departmentChart.options.scales.y.ticks.callback = function(value) { return Number.isInteger(value) ? value : null; };
+                departmentChart.options.scales.y.ticks.precision = 0;
+                departmentChart.options.scales.y.ticks.stepSize = 1;
+                departmentChart.update();
+            });
+        }
+    } else if (document.getElementById('departmentChart')) {
+        document.getElementById('departmentChart').parentElement.innerHTML = '<div class="text-muted small">No department data available</div>';
+    }
+
+    // 5. Spend Breakdown by Subcategory — same vertical-bar style, gradient
+    // fill and Spend/Proposals toggle as the Vendor chart above, just a
+    // different grouping.
+    const subcategoryLabels = {{ chart_subcategory_labels|safe }};
+    const subcategoryData = {{ chart_subcategory_data|safe }};
+    const subcategoryCounts = {{ chart_subcategory_counts|safe }};
+    let subcategoryChart = null;
+
+    if (subcategoryData.length > 0 && document.getElementById('subcategoryChart')) {
+        const subcategoryCtx = document.getElementById('subcategoryChart').getContext('2d');
+        const subcategoryGradient = subcategoryCtx.createLinearGradient(0, 0, 0, 280);
+        subcategoryGradient.addColorStop(0, '#6f42c1');
+        subcategoryGradient.addColorStop(1, 'rgba(111, 66, 193, 0.15)');
+
+        subcategoryChart = new Chart(subcategoryCtx, {
+            type: 'bar',
+            data: {
+                labels: subcategoryLabels,
+                datasets: [{
+                    data: subcategoryData,
+                    backgroundColor: subcategoryGradient,
+                    borderColor: '#6f42c1',
+                    borderWidth: 1.5,
+                    borderRadius: 6,
+                    barThickness: 28,
+                    hoverBackgroundColor: '#59359c'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0, 0, 0, 0.04)', drawTicks: false },
+                        border: { dash: [5, 5] },
+                        ticks: {
+                            callback: function(value) { return '₹' + Number(value).toLocaleString('en-IN'); },
+                            font: { family: "'Inter', sans-serif", size: 11 },
+                            color: '#64748b'
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { family: "'Inter', sans-serif", size: 11, weight: 600 }, color: '#475569' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        ...commonTooltip,
+                        callbacks: { label: function(context) { return ' Spend: ₹' + Number(context.raw).toLocaleString('en-IN'); } }
+                    }
+                }
+            }
+        });
+
+        const btnSubcategorySpend = document.getElementById('btnSubcategorySpend');
+        const btnSubcategoryCount = document.getElementById('btnSubcategoryCount');
+        const subcategoryChartTitle = document.getElementById('subcategoryChartTitle');
+
+        if (btnSubcategorySpend && btnSubcategoryCount) {
+            btnSubcategorySpend.addEventListener('click', function() {
+                btnSubcategorySpend.classList.add('active');
+                btnSubcategoryCount.classList.remove('active');
+                subcategoryChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend by Subcategory';
+                subcategoryChart.data.datasets[0].data = subcategoryData;
+                subcategoryChart.options.plugins.tooltip.callbacks.label = function(context) {
+                    return ' Spend: ₹' + Number(context.raw).toLocaleString('en-IN');
+                };
+                subcategoryChart.options.scales.y.ticks.callback = function(value) { return '₹' + Number(value).toLocaleString('en-IN'); };
+                subcategoryChart.options.scales.y.ticks.precision = undefined;
+                subcategoryChart.options.scales.y.ticks.stepSize = undefined;
+                subcategoryChart.update();
+            });
+            btnSubcategoryCount.addEventListener('click', function() {
+                btnSubcategoryCount.classList.add('active');
+                btnSubcategorySpend.classList.remove('active');
+                subcategoryChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Proposal Count by Subcategory';
+                subcategoryChart.data.datasets[0].data = subcategoryCounts;
+                subcategoryChart.options.plugins.tooltip.callbacks.label = function(context) { return ' Proposals: ' + context.raw; };
+                subcategoryChart.options.scales.y.ticks.callback = function(value) { return Number.isInteger(value) ? value : null; };
+                subcategoryChart.options.scales.y.ticks.precision = 0;
+                subcategoryChart.options.scales.y.ticks.stepSize = 1;
+                subcategoryChart.update();
+            });
+        }
+    } else if (document.getElementById('subcategoryChart')) {
+        document.getElementById('subcategoryChart').parentElement.innerHTML = '<div class="text-muted small">No subcategory data available</div>';
+    }
+
+    // 5c. Spend Breakdown by Campaign — same vertical-bar/gradient style
+    // and Spend/Proposals toggle as the Vendor and Category charts.
+    const campaignLabels = {{ chart_campaign_labels|safe }};
+    const campaignData = {{ chart_campaign_data|safe }};
+    const campaignCounts = {{ chart_campaign_counts|safe }};
+    let campaignChart = null;
+
+    if (campaignData.length > 0 && document.getElementById('campaignChart')) {
+        const campaignCtx = document.getElementById('campaignChart').getContext('2d');
+        const campaignGradient = campaignCtx.createLinearGradient(0, 0, 0, 280);
+        campaignGradient.addColorStop(0, '#fd7e14');
+        campaignGradient.addColorStop(1, 'rgba(253, 126, 20, 0.15)');
+
+        campaignChart = new Chart(campaignCtx, {
+            type: 'bar',
+            data: {
+                labels: campaignLabels,
+                datasets: [{
+                    data: campaignData,
+                    backgroundColor: campaignGradient,
+                    borderColor: '#fd7e14',
+                    borderWidth: 1.5,
+                    borderRadius: 6,
+                    barThickness: 28,
+                    hoverBackgroundColor: '#dc6803'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0, 0, 0, 0.04)', drawTicks: false },
+                        border: { dash: [5, 5] },
+                        ticks: {
+                            callback: function(value) { return '₹' + Number(value).toLocaleString('en-IN'); },
+                            font: { family: "'Inter', sans-serif", size: 11 },
+                            color: '#64748b'
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { family: "'Inter', sans-serif", size: 11, weight: 600 }, color: '#475569' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        ...commonTooltip,
+                        callbacks: { label: function(context) { return ' Spend: ₹' + Number(context.raw).toLocaleString('en-IN'); } }
+                    }
+                }
+            }
+        });
+
+        const btnCampaignSpend = document.getElementById('btnCampaignSpend');
+        const btnCampaignCount = document.getElementById('btnCampaignCount');
+        const campaignChartTitle = document.getElementById('campaignChartTitle');
+
+        if (btnCampaignSpend && btnCampaignCount) {
+            btnCampaignSpend.addEventListener('click', function() {
+                btnCampaignSpend.classList.add('active');
+                btnCampaignCount.classList.remove('active');
+                campaignChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Spend by Campaign';
+                campaignChart.data.datasets[0].data = campaignData;
+                campaignChart.options.plugins.tooltip.callbacks.label = function(context) {
+                    return ' Spend: ₹' + Number(context.raw).toLocaleString('en-IN');
+                };
+                campaignChart.options.scales.y.ticks.callback = function(value) { return '₹' + Number(value).toLocaleString('en-IN'); };
+                campaignChart.options.scales.y.ticks.precision = undefined;
+                campaignChart.options.scales.y.ticks.stepSize = undefined;
+                campaignChart.update();
+            });
+            btnCampaignCount.addEventListener('click', function() {
+                btnCampaignCount.classList.add('active');
+                btnCampaignSpend.classList.remove('active');
+                campaignChartTitle.innerHTML = '<i class="bi bi-bar-chart-line-fill me-2 text-primary"></i>Proposal Count by Campaign';
+                campaignChart.data.datasets[0].data = campaignCounts;
+                campaignChart.options.plugins.tooltip.callbacks.label = function(context) { return ' Proposals: ' + context.raw; };
+                campaignChart.options.scales.y.ticks.callback = function(value) { return Number.isInteger(value) ? value : null; };
+                campaignChart.options.scales.y.ticks.precision = 0;
+                campaignChart.options.scales.y.ticks.stepSize = 1;
+                campaignChart.update();
+            });
+        }
+    } else if (document.getElementById('campaignChart')) {
+        document.getElementById('campaignChart').parentElement.innerHTML = '<div class="text-muted small">No campaign data available</div>';
+    }
+
+    // 6. Payment Status Distribution
+    const paymentStatusLabels = {{ chart_payment_status_labels|safe }};
+    const paymentStatusData = {{ chart_payment_status_data|safe }};
+    const paymentColors = {{ chart_payment_status_colors|safe }};
+
+    if (paymentStatusData.length > 0 && document.getElementById('paymentStatusChart')) {
+        new Chart(document.getElementById('paymentStatusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: paymentStatusLabels,
+                datasets: [{
+                    data: paymentStatusData,
+                    backgroundColor: paymentColors,
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverOffset: 6,
+                    spacing: 3,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '72%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16, font: { family: "'Inter', sans-serif", size: 11, weight: 'bold' } } },
+                    tooltip: { ...commonTooltip, callbacks: { label: function(context) { return ' Payments: ' + context.raw; } } }
+                }
+            }
+        });
+    } else if (document.getElementById('paymentStatusChart')) {
+        document.getElementById('paymentStatusChart').parentElement.innerHTML = '<div class="text-muted small">No payment data available</div>';
+    }
+
 });
 </script>
 {% endblock %}

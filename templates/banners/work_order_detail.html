@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ order.po_number }} · AdTrack{% endblock %}
+{% block page_title %}Work Order{% endblock %}
+
+{% block extra_css %}
+<style>
+    .wo-document {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        padding: 1.5rem 2.25rem 2.25rem;
+        box-shadow: 0 10px 25px -10px rgba(15, 23, 42, 0.08);
+        font-size: 0.85rem;
+        color: #2b2b2b;
+    }
+    .wo-top-bar {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.72rem;
+        color: #555;
+        margin-bottom: 0.75rem;
+    }
+    .wo-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 3px solid #1b7a3d;
+        padding-bottom: 0.85rem;
+        margin-bottom: 1.25rem;
+    }
+    .wo-brand { display: flex; align-items: center; gap: 0.6rem; }
+    .wo-nav-links { text-align: right; font-size: 0.72rem; color: #333; line-height: 1.6; }
+    .wo-section-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #1b7a3d;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.85rem;
+    }
+    .wo-subheading { font-weight: 700; font-size: 0.95rem; color: #1b7a3d; margin: 1rem 0 0.5rem; }
+    .wo-intro-table, .wo-detail-table, .wo-financial-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.1rem;
+        border: 1px solid #ccc;
+    }
+    .wo-intro-table td, .wo-detail-table td, .wo-detail-table th,
+    .wo-financial-table td, .wo-financial-table th {
+        border: 1px solid #ccc;
+        padding: 0.5rem 0.7rem;
+        vertical-align: top;
+        text-align: left;
+        font-size: 0.85rem;
+    }
+    .wo-detail-table th, .wo-financial-table th { background: #f5f5f5; font-weight: 700; }
+    .wo-financial-table { max-width: 420px; }
+    .wo-financial-table td:first-child { width: 70%; }
+    .wo-financial-table .wo-total-row td { font-weight: 800; border-top: 2px solid #333; font-size: 0.95rem; }
+    .wo-signatory-block { margin-top: 1.25rem; }
+    .wo-signatory-block p { margin: 0 0 0.5rem; }
+    .wo-notes ul { padding-left: 1.1rem; margin-top: 0.6rem; }
+    .wo-notes li { font-size: 0.79rem; line-height: 1.5; color: #334155; margin-bottom: 0.5rem; }
+
+    /* Sizes below match templates/banners/work_order_pdf.html exactly —
+       one uniform font size everywhere on the page, so the browser's
+       Print/Save-as-PDF output and the Download PDF button produce
+       visually identical, evenly-sized documents. */
+    @media print {
+        @page { size: A4; margin: 1cm; }
+        .sidebar, .app-topbar, .breadcrumb, .wo-page-header { display: none !important; }
+        .app-content { margin: 0 !important; padding: 0 !important; }
+        .wo-document {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            font-size: 12px !important;
+        }
+        .wo-top-bar { font-size: 12px !important; margin-bottom: 4px !important; }
+        .wo-header { margin-bottom: 4px !important; padding-bottom: 4px !important; }
+        .wo-brand img { max-height: 44px !important; }
+        .wo-nav-links { font-size: 12px !important; line-height: 1.3 !important; }
+        .wo-section-title { font-size: 12px !important; margin-bottom: 6px !important; }
+        .wo-section-title span:last-child { font-size: 12px !important; }
+        .wo-subheading { font-size: 12px !important; margin: 6px 0 3px !important; }
+        .wo-intro-table, .wo-detail-table, .wo-financial-table { margin-bottom: 7px !important; }
+        .wo-intro-table td, .wo-detail-table td, .wo-detail-table th,
+        .wo-financial-table td, .wo-financial-table th {
+            padding: 3px 6px !important;
+            font-size: 12px !important;
+        }
+        .wo-financial-table .wo-total-row td { font-size: 12px !important; }
+        .wo-signatory-block { margin-top: 8px !important; }
+        .wo-signatory-block p { font-size: 12px !important; margin: 0 0 4px !important; }
+        .wo-notes ul { margin-top: 6px !important; padding-left: 16px !important; }
+        .wo-notes li { font-size: 12px !important; line-height: 1.5 !important; margin-bottom: 6px !important; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-3">
+        <li class="breadcrumb-item"><a href="{% url 'work_order_list' %}" class="text-decoration-none">Work Orders</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ order.po_number }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 wo-page-header">
+    <div>
+        <div class="text-primary fw-semibold font-monospace mb-1" style="font-size: 0.85rem;">{{ order.po_number }}</div>
+        <h3 class="mb-0 text-dark fw-bold">{{ banner.campaign.name|default:"Untitled Proposal" }}</h3>
+        <p class="text-muted small mb-0 mt-1">Work Order generated {{ order.created_at|date:"d M Y, H:i" }} · for Proposal {{ banner.proposal_number }}</p>
+    </div>
+    <div class="d-flex gap-2 wo-actions">
+        <a href="{% url 'work_order_download' order.pk %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1.5 fw-semibold" style="border-radius: 0.375rem;">
+            <i class="bi bi-download"></i> Download PDF
+        </a>
+        <button type="button" onclick="window.print()" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1.5 fw-semibold" style="border-radius: 0.375rem;">
+            <i class="bi bi-printer"></i> Print
+        </button>
+        <a href="{% url 'banner_detail' banner.pk %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1.5 fw-semibold" style="border-radius: 0.375rem;">
+            <i class="bi bi-arrow-left"></i> Back to Proposal
+        </a>
+    </div>
+</div>
+
+<div class="wo-document">
+    <div class="wo-top-bar">
+        <span>{{ order.created_at|date:"d/m/Y, H:i" }}</span>
+        <span>Work Order — {{ banner.proposal_number }}</span>
+    </div>
+
+    <div class="wo-header">
+        <div class="wo-brand">
+            <img src="{% static 'img/image.png' %}" alt="Ramachandran — Jeyachandran Retail Private Limited" style="max-height: 60px; width: auto;">
+        </div>
+        <div class="wo-nav-links">
+            FASHION&nbsp;&nbsp;|&nbsp;&nbsp;LIFESTYLE&nbsp;&nbsp;|&nbsp;&nbsp;HOME ESSENTIALS<br>
+            SUPERMARKET&nbsp;&nbsp;|&nbsp;&nbsp;FOOD COURT&nbsp;&nbsp;|&nbsp;&nbsp;BAKERY
+        </div>
+    </div>
+
+    <div class="wo-section-title">
+        <span>Work Order Details</span>
+        <span style="font-size: 0.85rem; font-weight: 700; color: #1e293b;">PO Number: [ {{ order.po_number }} ]</span>
+    </div>
+
+    <table class="wo-intro-table">
+        <tr>
+            <td colspan="2"><strong>JEYACHANDRAN RETAIL PRIVATE LIMITED</strong></td>
+        </tr>
+        <tr>
+            <td>The details of Work Order given to [ {{ banner.vendor.name|default:"—" }} ]</td>
+            <td style="text-align: right;">Proposal Number: [ {{ banner.proposal_number }} ]</td>
+        </tr>
+        <tr>
+            <td colspan="2">towards [ {{ banner.subcategory.name|default:banner.category.name|default:"—" }} ]</td>
+        </tr>
+    </table>
+
+    <div class="wo-subheading">Activity Details</div>
+    <table class="wo-detail-table">
+        <tr>
+            <th>Name of Activity</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Region</th>
+            <th>Department</th>
+        </tr>
+        <tr>
+            <td>{{ banner.campaign.name|default:"—" }}</td>
+            <td>{% if banner.start_date %}{{ banner.start_date|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+            <td>{% if banner.end_date %}{{ banner.end_date|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+            <td>{{ banner.location|default:"—" }}</td>
+            <td>{{ banner.department.name|default:"—" }}</td>
+        </tr>
+        {% if banner.items.all %}
+        <tr>
+            <th>Order #</th>
+            <th>Store Name</th>
+            <th>Medium</th>
+            <th>Dimensions (H × W)</th>
+            <th>Sq. Ft.</th>
+            <th>Qty</th>
+            <th>Rate (₹)</th>
+            <th>Tax (GST)</th>
+            <th>Amount (₹)</th>
+        </tr>
+        {% for item in banner.items.all %}
+        <tr>
+            <td>Order #{{ item.item_number }}</td>
+            <td>{{ item.store_name|default:banner.location|default:"—" }}</td>
+            <td>{{ item.medium.name|default:"—" }}</td>
+            <td>{{ item.height }} × {{ item.width }} {{ item.get_size_unit_display }}</td>
+            <td>{{ item.square_feet|floatformat:2 }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>₹{{ item.unit_price|floatformat:2 }}</td>
+            <td>{{ item.tax_percentage_display }} (₹{{ item.tax_amount|floatformat:2 }})</td>
+            <td>₹{{ item.grand_total|default:item.total_amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+            <th>Quantity</th>
+            <th>Size</th>
+            <th>Unit Rate</th>
+            <th>Amount</th>
+        </tr>
+        <tr>
+            <td>{{ banner.quantity|floatformat:0 }}</td>
+            <td>{% if banner.size %}{{ banner.size }} {{ banner.get_size_unit_display }}{% else %}—{% endif %}</td>
+            <td>{{ banner.unit_price|floatformat:2 }}</td>
+            <td>{{ banner.grand_total|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+    </table>
+
+    <div class="wo-subheading">Financial</div>
+    <table class="wo-financial-table">
+        <tr><th colspan="2">Financial</th></tr>
+        <tr><td>Amount</td><td>₹{{ banner.base_line_amount|floatformat:2 }}</td></tr>
+        <tr><td>Tax ({{ banner.tax_percentage_display|default:"18% GST" }})</td><td>₹{{ banner.tax_amount|floatformat:2 }}</td></tr>
+        <tr><td>Other charges</td><td>₹{{ banner.total_extra_charge|floatformat:2 }}</td></tr>
+        <tr class="wo-total-row"><td>Total Amount</td><td>₹{{ banner.grand_total|floatformat:2 }}</td></tr>
+    </table>
+
+    <div class="wo-signatory-block">
+        <p><strong>Name :</strong></p>
+        <p><strong>Authorised Signatory:</strong></p>
+    </div>
+
+    <div class="wo-notes">
+        <div class="wo-subheading" style="margin-top: 0;">Important Terms</div>
+        <ul>
+            <li>This is an Activity Sanction Work Order and permits execution only of the approved marketing activity.</li>
+            <li>Payment will be released only after successful execution and approval from the Marketing Department.</li>
+            <li>The vendor must ensure that the activity is legally permissible and complies with applicable regulations.</li>
+            <li>The artwork/display must follow the approved artwork/specifications. Any deviation or correction will be at the vendor's cost.</li>
+            <li>No advance payment will be made.</li>
+            <li>If the work is not completed within the specified time, a 10% penalty on the total payment may be levied.</li>
+            <li>Jeyachandran Retail Private Limited reserves the right to inspect the site/media vehicle.</li>
+            <li>Any government/private authority-related claims, taxes, demands or levies arising from the activity will be the vendor's responsibility.</li>
+            <li>Proof of execution, including dated photographs/newspaper proof where applicable, must be submitted along with the bill.</li>
+            <li>Any dispute must be raised within the specified period after invoice submission.</li>
+            <li>Any change in agreed location, size, quality or specifications requires written approval.</li>
+            <li>GST-compliant invoice must be submitted with the required GST details.</li>
+            <li>Invoice should contain the PO/Work Order number and correct billing details.</li>
+            <li>Manual corrections on invoices are not permitted.</li>
+            <li>GST compliance and timely filing are the vendor's responsibility.</li>
+            <li>Payment will be processed only after the invoice and GST details are properly verified.</li>
+        </ul>
+    </div>
+
+</div>
+{% endblock %}

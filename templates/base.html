@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    <link href="{% versioned_static 'css/style.css' %}" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -41,23 +41,64 @@
             </a>
             {% endif %}
             
-            <!-- View Banners -->
-            {% if user|has_permission:"can_view_banners" %}
-            <a class="sidebar-link {% if request.resolver_match.url_name == 'banner_list' %}active{% endif %}" href="{% url 'banner_list' %}">
-                <i class="bi bi-images"></i><span>Banners</span>
-            </a>
-            {% endif %}
-            <!-- Admin & Manager only: Add Banner -->
+            <!-- Admin & Manager only: Add Proposal -->
             {% if user|has_permission:"can_add_banner" %}
             <a class="sidebar-link {% if request.resolver_match.url_name == 'banner_add' %}active{% endif %}" href="{% url 'banner_add' %}">
-                <i class="bi bi-plus-circle"></i><span>Add Banner</span>
+                <i class="bi bi-plus-circle"></i><span>Add Proposal</span>
+            </a>
+
+            {% endif %}
+            <!-- Payments Upload -->
+            {% if user|has_permission:"can_add_payment" %}
+            <a class="sidebar-link {% if request.resolver_match.url_name == 'payment_upload' %}active{% endif %}" href="{% url 'payment_upload' %}">
+                <i class="bi bi-cloud-upload"></i><span>Payments Upload</span>
+            </a>
+            {% endif %}
+            <!-- View Proposals -->
+            {% if user|has_permission:"can_view_banners" %}
+            <a class="sidebar-link {% if request.resolver_match.url_name == 'banner_list' %}active{% endif %}" href="{% url 'banner_list' %}">
+                <i class="bi bi-images"></i><span>Proposals</span>
+            </a>
+            {% endif %}
+            <!-- Payments Records -->
+            {% if user|has_permission:"can_view_payments" %}
+            <a class="sidebar-link {% if request.resolver_match.url_name == 'payment_list' or request.resolver_match.url_name == 'payment_detail' %}active{% endif %}" href="{% url 'payment_list' %}">
+                <i class="bi bi-cash-stack"></i><span>Payments Records</span>
+            </a>
+            {% endif %}
+            <!-- Work Orders (generated once a proposal is fully approved) -->
+            {% if user|has_permission:"can_view_banners" %}
+            <a class="sidebar-link {% if request.resolver_match.url_name == 'work_order_list' or request.resolver_match.url_name == 'work_order_detail' %}active{% endif %}" href="{% url 'work_order_list' %}">
+                <i class="bi bi-file-earmark-text"></i><span>Work Orders</span>
             </a>
             {% endif %}
             <!-- Administration -->
-            {% if user|has_permission:"can_manage_users" or user|has_permission:"can_approve_requests" or user|has_permission:"can_manage_roles" %}
-            <div class="text-uppercase small fw-bold text-secondary px-2 mt-3 mb-1" style="font-size: 0.68rem; letter-spacing: 0.05em; opacity: 0.7;">Admin</div>
+            {% if user|has_permission:"can_manage_users" or user|has_permission:"can_approve_requests" or user|has_permission:"can_manage_roles" or user|has_permission:"can_manage_approval_flow" or user|can_review %}
+            <!-- <div class="text-uppercase small fw-bold text-secondary px-2 mt-3 mb-1" style="font-size: 0.68rem; letter-spacing: 0.05em; opacity: 0.7;">Admin</div> -->
             {% endif %}
             
+            {% with url_name=request.resolver_match.url_name %}
+            {% if user|can_review_proposals %}
+            {% get_pending_banners_count user as pending_banners %}
+            <a class="sidebar-link d-flex justify-content-between align-items-center {% if url_name == 'banner_approvals' or url_name == 'proposal_review' %}active{% endif %}" href="{% url 'banner_approvals' %}">
+                <div class="d-flex align-items-center gap-2"><i class="bi bi-check-circle"></i><span>Proposal Approvals</span></div>
+                {% if pending_banners > 0 %}
+                <span class="badge bg-danger rounded-pill" style="font-size: 0.65rem; padding: 0.25em 0.5em;">{{ pending_banners }}</span>
+                {% endif %}
+            </a>
+            {% endif %}
+
+            {% if user|can_review_payments %}
+            {% get_pending_payments_count user as pending_payments %}
+            <a class="sidebar-link d-flex justify-content-between align-items-center {% if url_name == 'payment_approvals' or url_name == 'payment_review' %}active{% endif %}" href="{% url 'payment_approvals' %}">
+                <div class="d-flex align-items-center gap-2"><i class="bi bi-cash-coin"></i><span>Payment Approvals</span></div>
+                {% if pending_payments > 0 %}
+                <span class="badge bg-danger rounded-pill" style="font-size: 0.65rem; padding: 0.25em 0.5em;">{{ pending_payments }}</span>
+                {% endif %}
+            </a>
+            {% endif %}
+            {% endwith %}
+
             {% if user|has_permission:"can_approve_requests" %}
             {% get_pending_users_count as pending_users %}
             <a class="sidebar-link d-flex justify-content-between align-items-center {% if request.resolver_match.url_name == 'pending_requests' %}active{% endif %}" href="{% url 'pending_requests' %}">
@@ -79,6 +120,11 @@
             {% if user|has_permission:"can_manage_roles" %}
             <a class="sidebar-link {% if request.resolver_match.url_name == 'role_matrix' %}active{% endif %}" href="{% url 'role_matrix' %}">
                 <i class="bi bi-shield-check"></i><span>Role Matrix</span>
+            </a>
+            {% endif %}
+            {% if user|has_permission:"can_manage_approval_flow" %}
+            <a class="sidebar-link {% if request.resolver_match.url_name == 'approval_flow' %}active{% endif %}" href="{% url 'approval_flow' %}">
+                <i class="bi bi-signpost-2"></i><span>Approval Flow</span>
             </a>
             {% endif %}
         </nav>
@@ -144,54 +190,6 @@ document.getElementById('sidebarToggle')?.addEventListener('click', function () 
 document.getElementById('sidebarBackdrop')?.addEventListener('click', function () {
     document.getElementById('sidebar').classList.remove('open');
     this.classList.remove('show');
-});
-
-document.addEventListener('click', function (e) {
-    const btn = e.target.closest('.capture-gps-btn');
-    if (!btn) return;
-
-    const form = btn.closest('form');
-    const status = form.querySelector('.gps-status');
-    const latInputs = form.querySelectorAll('[data-geo="lat"]');
-    const lngInputs = form.querySelectorAll('[data-geo="lng"]');
-
-    if (!navigator.geolocation) {
-        status.textContent = 'Geolocation is not supported by this browser.';
-        return;
-    }
-    status.textContent = 'Locating…';
-    navigator.geolocation.getCurrentPosition(function (position) {
-        latInputs.forEach(function (input) { input.value = position.coords.latitude.toFixed(6); });
-        lngInputs.forEach(function (input) { input.value = position.coords.longitude.toFixed(6); });
-        status.textContent = 'Captured: ' + position.coords.latitude.toFixed(6) + ', ' + position.coords.longitude.toFixed(6);
-    }, function (error) {
-        status.textContent = 'Unable to retrieve location: ' + error.message;
-    });
-});
-
-document.addEventListener('change', function (e) {
-    const fileInput = e.target.closest('input[type="file"][accept="image/*"]');
-    if (!fileInput) return;
-
-    const form = fileInput.closest('form');
-    if (!form) return;
-
-    const status = form.querySelector('.gps-status');
-    const latInputs = form.querySelectorAll('[data-geo="lat"]');
-    const lngInputs = form.querySelectorAll('[data-geo="lng"]');
-
-    if (!navigator.geolocation) {
-        if (status) status.textContent = 'Geolocation not supported.';
-        return;
-    }
-    if (status) status.textContent = 'Fetching location for photo…';
-    navigator.geolocation.getCurrentPosition(function (position) {
-        latInputs.forEach(function (input) { input.value = position.coords.latitude.toFixed(6); });
-        lngInputs.forEach(function (input) { input.value = position.coords.longitude.toFixed(6); });
-        if (status) status.textContent = 'Location auto-captured: ' + position.coords.latitude.toFixed(6) + ', ' + position.coords.longitude.toFixed(6);
-    }, function (error) {
-        if (status) status.textContent = 'Location capture failed: ' + error.message;
-    });
 });
 </script>
 {% block extra_js %}{% endblock %}

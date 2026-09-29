@@ -15,9 +15,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     'accounts',
     'banners',
+    'payments',
 ]
 
 MIDDLEWARE = [
@@ -103,7 +103,7 @@ JAZZMIN_SETTINGS = {
     'site_brand': 'AdTrack',
     'welcome_sign': 'Welcome to AdTrack',
     'copyright': 'AdTrack',
-    'search_model': ['banners.Banner'],
+    'search_model': ['banners.Proposal'],
     'topmenu_links': [
         {'name': 'View Site', 'url': 'dashboard', 'permissions': ['auth.view_user']},
     ],
@@ -113,9 +113,10 @@ JAZZMIN_SETTINGS = {
         'auth.user': 'fas fa-user',
         'auth.group': 'fas fa-users',
         'accounts.profile': 'fas fa-id-badge',
-        'banners.banner': 'fas fa-images',
-        'banners.bannerplacement': 'fas fa-map-marker-alt',
-        'banners.placementphoto': 'fas fa-camera',
-        'banners.bannercost': 'fas fa-rupee-sign',
+        'banners.proposal': 'fas fa-file-invoice',
+        'banners.campaign': 'fas fa-bullhorn',
+        'banners.vendor': 'fas fa-store',
+        'banners.category': 'fas fa-tags',
+        'banners.subcategory': 'fas fa-tag',
     },
 }

@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load banner_extras %}
+{% block title %}Payments Records · AdTrack{% endblock %}
+{% block page_title %}Payments Records{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
+    <div>
+        <h4 class="mb-1 text-dark fw-bold">Payments Records</h4>
+        <p class="text-muted small mb-0">Every payment claim submitted against a Work Order, and its approval status.</p>
+    </div>
+    {% if user|has_permission:"can_add_payment" %}
+    <a href="{% url 'payment_upload' %}" class="btn btn-primary d-flex align-items-center gap-2">
+        <i class="bi bi-plus-circle"></i>Submit Payment
+    </a>
+    {% endif %}
+</div>
+
+<div class="card border shadow-sm" style="border-radius: 0.75rem; background-color: #ffffff;">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <span class="fw-bold text-dark fs-6"><i class="bi bi-cash-stack me-2 text-primary"></i>All Payment Claims</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr class="text-secondary-emphasis" style="font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
+                    <th class="ps-4 py-3 text-start">Payment #</th>
+                    <th class="py-3 text-start">Work Order #</th>
+                    <th class="py-3 text-start">Proposal #</th>
+                    <th class="py-3 text-center">Status</th>
+                    <th class="py-3 text-center">Submitted By</th>
+                    <th class="py-3 text-center">Date</th>
+                    <th class="pe-4 py-3 text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody style="font-size: 0.95rem;">
+                {% for claim in claims %}
+                <tr>
+                    <td class="ps-4 py-3 fw-semibold text-primary font-monospace" style="font-size: 0.85rem;">{{ claim.payment_number }}</td>
+                    <td class="py-3 font-monospace" style="font-size: 0.85rem;">{{ claim.work_order.po_number|default:"—" }}</td>
+                    <td class="py-3 font-monospace" style="font-size: 0.85rem;">{{ claim.proposal.proposal_number|default:"—" }}</td>
+                    <td class="py-3 text-center">
+                        <span class="badge {% if claim.approval_status == 'approved' %}bg-success-subtle text-success border border-success-subtle{% elif claim.approval_status == 'rejected' %}bg-danger-subtle text-danger border border-danger-subtle{% else %}bg-warning-subtle text-warning-emphasis border border-warning-subtle{% endif %} px-2.5 py-1.5" style="border-radius: 30px; font-size: 0.72rem;">
+                            {{ claim.stage_label }}
+                        </span>
+                    </td>
+                    <td class="py-3 text-center">{{ claim.created_by.username|default:"—" }}</td>
+                    <td class="py-3 text-center">{{ claim.created_at|date:"d M Y" }}</td>
+                    <td class="pe-4 py-3 text-end">
+                        <div class="d-flex justify-content-end gap-2 align-items-center">
+                            <a href="{% url 'payment_detail' claim.pk %}" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center p-2" title="View" style="border-radius: 0.375rem;">
+                                <i class="bi bi-eye" style="font-size: 0.9rem;"></i>
+                            </a>
+                            {% if claim|can_edit_payment:user %}
+                            <a href="{% url 'payment_edit' claim.pk %}" class="btn btn-sm btn-outline-warning d-inline-flex align-items-center justify-content-center p-2" title="Edit" style="border-radius: 0.375rem;">
+                                <i class="bi bi-pencil" style="font-size: 0.9rem;"></i>
+                            </a>
+                            {% endif %}
+                            {% if user|has_permission:"can_delete_payment" %}
+                            <a href="{% url 'payment_delete' claim.pk %}" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center p-2" title="Delete" style="border-radius: 0.375rem;">
+                                <i class="bi bi-trash" style="font-size: 0.9rem;"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-5">
+                        <div class="mb-2"><i class="bi bi-cash-stack fs-2 text-muted"></i></div>
+                        <div>No payment claims submitted yet.</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% include '_pagination.html' with item_label='payment claims' %}
+{% endblock %}

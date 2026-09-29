@@ -14,6 +14,8 @@ venv/
 # Django
 db.sqlite3
 db.sqlite3-journal
+db.sqlite3-shm
+db.sqlite3-wal
 staticfiles/
 
 # User uploads (banner photos, bills) — belongs in backups, not git
@@ -23,6 +25,15 @@ media/
 .vscode/
 .idea/
 *.swp
+
+# Claude Code — settings.local.json holds this machine's own tool
+# permissions, not something to share via git (settings.json, if ever
+# added, is the project-shared one and stays tracked).
+.claude/settings.local.json
+
+# Test artifacts
+.pytest_cache/
+.coverage
 
 # OS files
 Thumbs.db

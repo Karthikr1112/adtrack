@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}Edit Payment · AdTrack{% endblock %}
+{% block page_title %}Edit Payment{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-3">
+                <li class="breadcrumb-item"><a href="{% url 'payment_list' %}" class="text-decoration-none">Payments Records</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'payment_detail' claim.pk %}" class="text-decoration-none">{{ claim.payment_number|default:"Payment" }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Edit</li>
+            </ol>
+        </nav>
+
+        {% if needs_rework %}
+        <div class="alert alert-info d-flex align-items-start gap-2 mb-4">
+            <i class="bi bi-arrow-counterclockwise fs-5 mt-1"></i>
+            <div>
+                <strong>This payment was sent back for rework.</strong>
+                {% if rework_note %}
+                <div class="small mt-1">{{ rework_note.stage }}'s comment: "{{ rework_note.comment }}"</div>
+                {% endif %}
+                <div class="small mt-1">Make the necessary changes and save — it will be resubmitted for approval automatically.</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" novalidate id="paymentEditForm">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <!-- Work Order reference -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-file-earmark-text me-2"></i>Work Order Reference</h6>
+                </div>
+                <div class="card-body p-4">
+                    <label for="{{ form.work_order.id_for_label }}" class="form-label fw-semibold text-secondary">Work Order Number <span class="text-danger">*</span></label>
+                    {{ form.work_order }}
+                    {% for error in form.work_order.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+
+            <!-- Documents -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-cloud-upload me-2"></i>Documents</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        {% for field_name, field, existing in documents %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary">{{ field.label }} <span class="text-danger">*</span></label>
+                            {% if existing %}
+                            <div class="d-flex align-items-center gap-2 mb-2 p-2 border rounded small" style="background-color: #fafbfc;">
+                                <i class="bi bi-paperclip text-primary"></i>
+                                <span class="text-truncate flex-grow-1">{{ existing.name|slice:"-30:" }}</span>
+                                <a href="{{ existing.url }}" download class="text-decoration-none" title="Download"><i class="bi bi-download"></i></a>
+                            </div>
+                            {% endif %}
+                            {{ field }}
+                            <div class="form-text">Image or PDF, up to 15 MB. {% if existing %}Choose a new file to replace it.{% endif %}</div>
+                            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Remarks -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-clipboard-check me-2"></i>Remarks</h6>
+                </div>
+                <div class="card-body p-4">
+                    <label for="{{ form.remarks.id_for_label }}" class="form-label fw-semibold text-secondary">Remarks <span class="text-danger">*</span></label>
+                    {{ form.remarks }}
+                    {% for error in form.remarks.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 pt-2 mb-5">
+                <a href="{% url 'payment_detail' claim.pk %}" class="btn btn-outline-secondary px-4">
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-success px-4">
+                    <i class="bi bi-check-circle me-1"></i>{% if needs_rework %}Resubmit for Approval{% else %}Save Changes{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load banner_extras %}
+{% block title %}{{ claim.payment_number }} · AdTrack{% endblock %}
+{% block page_title %}Payment Details{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-3">
+        <li class="breadcrumb-item"><a href="{% url 'payment_list' %}" class="text-decoration-none">Payments Records</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ claim.payment_number }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <div class="text-primary fw-semibold font-monospace mb-1" style="font-size: 0.85rem;">{{ claim.payment_number|default:"—" }}</div>
+        <h3 class="mb-0 text-dark fw-bold d-flex align-items-center gap-2 flex-wrap">
+            {{ claim.work_order.po_number|default:"Payment Claim" }}
+            <span class="badge {% if claim.approval_status == 'approved' %}bg-success-subtle text-success border border-success-subtle{% elif claim.approval_status == 'rejected' %}bg-danger-subtle text-danger border border-danger-subtle{% elif claim.approval_status == 'rework' %}bg-info-subtle text-info border border-info-subtle{% else %}bg-warning-subtle text-warning-emphasis border border-warning-subtle{% endif %} px-2.5 py-1.5" style="border-radius: 30px; font-size: 0.75rem; font-weight: 600;">
+                <i class="bi {% if claim.approval_status == 'approved' %}bi-check-circle-fill{% elif claim.approval_status == 'rejected' %}bi-x-circle-fill{% elif claim.approval_status == 'rework' %}bi-arrow-counterclockwise{% else %}bi-clock-fill{% endif %} me-1"></i>{{ claim.stage_label }}
+            </span>
+        </h3>
+    </div>
+    <div class="d-flex gap-2">
+        {% if my_review_stages and claim.current_step_id in my_review_stages %}
+        <a href="{% url 'payment_review' claim.pk %}" class="btn btn-primary btn-sm d-flex align-items-center gap-1.5 fw-semibold" style="border-radius: 0.375rem;">
+            <i class="bi bi-clipboard-check"></i> Review &amp; Decide
+        </a>
+        {% endif %}
+        {% if claim|can_edit_payment:user %}
+        <a href="{% url 'payment_edit' claim.pk %}" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1.5 fw-semibold" style="border-radius: 0.375rem;">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        {% endif %}
+        {% if user|has_permission:"can_delete_payment" %}
+        <a href="{% url 'payment_delete' claim.pk %}" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1.5 fw-semibold" style="border-radius: 0.375rem;">
+            <i class="bi bi-trash"></i> Delete
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        {% include 'payments/_payment_overview.html' %}
+        {% include 'payments/_payment_documents.html' %}
+    </div>
+    <div class="col-lg-5">
+        {% include 'banners/_proposal_timeline.html' %}
+    </div>
+</div>
+{% endblock %}

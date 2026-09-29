@@ -77,6 +77,47 @@ body {
     box-shadow: 0 4px 6px -1px rgba(13, 110, 253, 0.2), 0 2px 4px -1px rgba(13, 110, 253, 0.1);
 }
 
+.sidebar-link .submenu-chevron {
+    font-size: 0.75rem;
+    transition: transform 0.2s ease;
+}
+
+.sidebar-link[aria-expanded="true"] .submenu-chevron {
+    transform: rotate(180deg);
+}
+
+.sidebar-sublink {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.55rem 0.85rem 0.55rem 1.6rem;
+    border-radius: 0.5rem;
+    color: #5b6b7b;
+    text-decoration: none;
+    font-size: 0.87rem;
+    margin-bottom: 0.15rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    font-weight: 500;
+}
+
+.sidebar-sublink i {
+    font-size: 0.95rem;
+    width: 1.1rem;
+    text-align: center;
+}
+
+.sidebar-sublink:hover {
+    background-color: rgba(13, 110, 253, 0.06);
+    color: #0d6efd;
+}
+
+.sidebar-sublink.active {
+    background-color: #0d6efd;
+    color: #fff;
+    font-weight: 600;
+}
+
 .sidebar-user {
     padding: 0.9rem 1rem 1.1rem;
     border-top: 1px solid #dce6f1;

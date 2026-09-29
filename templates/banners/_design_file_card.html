@@ -1,0 +1,20 @@
+{% comment %}
+The Design File card — the Coordinator's uploaded design file, shown as its
+own card, separate from the Approval Timeline. Shared by banner_detail.html
+and proposal_review.html. Expects: design_file (a FileField value, may be
+falsy if the Coordinator hasn't approved yet).
+{% endcomment %}
+{% if design_file %}
+<div class="card border shadow-sm mb-4" style="border-radius: 0.75rem; background-color: #ffffff;">
+    <div class="card-header bg-white py-3 border-bottom">
+        <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-file-earmark-image me-2"></i>Design File</h6>
+    </div>
+    <div class="card-body p-4">
+        <div class="row g-3">
+            <div class="col-6 col-md-4">
+                {% include 'banners/_caption_card.html' with file=design_file label='Design File' %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

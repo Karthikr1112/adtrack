@@ -3,6 +3,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib import messages
+from django.core.paginator import Paginator
+from django.http import Http404
 from accounts.decorators import role_required
 from .forms import UserCreateForm, UserEditForm
 
@@ -185,14 +187,18 @@ def login_view(request):
                 return redirect(next_url)
             
             # Smart redirect based on permissions (single cached query)
-            from .permissions import get_role_permissions
+            from .permissions import get_role_permissions, can_review_anything
             perms = get_role_permissions(request.user)
             if 'can_view_dashboard' in perms:
                 return redirect('dashboard')
+            elif can_review_anything(request.user):
+                return redirect('banner_approvals')
             elif 'can_view_banners' in perms:
                 return redirect('banner_list')
             elif 'can_add_banner' in perms:
                 return redirect('banner_add')
+            elif 'can_view_payments' in perms:
+                return redirect('payment_list')
                     
             return redirect('dashboard')
 
@@ -209,8 +215,10 @@ def logout_view(request):
 @role_required('can_manage_users')
 def user_management(request):
     users = User.objects.select_related('profile__role').filter(is_active=True).order_by('username')
+    page_obj = Paginator(users, 25).get_page(request.GET.get('page'))
     return render(request, 'accounts/user_management.html', {
-        'users': users,
+        'users': page_obj,
+        'page_obj': page_obj,
     })
 
 
@@ -219,8 +227,10 @@ def pending_requests(request):
     users = User.objects.select_related('profile__role').filter(
         is_active=False
     ).order_by('-date_joined')
+    page_obj = Paginator(users, 25).get_page(request.GET.get('page'))
     return render(request, 'accounts/pending_requests.html', {
-        'users': users,
+        'users': page_obj,
+        'page_obj': page_obj,
     })
 
 
@@ -259,6 +269,95 @@ def role_matrix(request):
     return render(request, 'accounts/role_matrix.html', {'roles': roles, 'features': features})
 
 
+@role_required('can_manage_approval_flow')
+def approval_flow(request):
+    """The Approval Flow builder — every step in the multi-level approval
+    chain used by both Proposals and Payments, shown as a numbered
+    diagram. Each step's Role comes straight from your Role table, so
+    renaming, replacing, adding, or reordering steps is just data here,
+    never a code change."""
+    from .models import Role, WorkflowStep
+
+    steps = WorkflowStep.objects.select_related('role').order_by('order')
+    return render(request, 'accounts/approval_flow.html', {
+        'steps': steps,
+        'roles': Role.objects.all().order_by('name'),
+    })
+
+
+@role_required('can_manage_approval_flow')
+def workflow_step_add(request):
+    from .models import Role, WorkflowStep
+
+    if request.method == 'POST':
+        role = Role.objects.order_by('name').first()
+        if role is None:
+            messages.error(request, 'Create at least one Role first, then add an approval step.')
+        else:
+            next_order = (WorkflowStep.objects.order_by('-order').values_list('order', flat=True).first() or 0) + 1
+            WorkflowStep.objects.create(order=next_order, role=role)
+            messages.success(request, f'Step {next_order} added — pick its role below.')
+    return redirect('approval_flow')
+
+
+@role_required('can_manage_approval_flow')
+def workflow_step_update(request, step_id):
+    from .models import Role, WorkflowStep
+
+    step = get_object_or_404(WorkflowStep, pk=step_id)
+    if request.method == 'POST':
+        role = Role.objects.filter(pk=request.POST.get('role')).first()
+        if role is None:
+            messages.error(request, 'Select a valid role.')
+        else:
+            step.role = role
+            step.allow_rework = request.POST.get('allow_rework') == 'on'
+            if step.order in (1, 2):
+                step.allow_reject = False
+            else:
+                step.allow_reject = request.POST.get('allow_reject') == 'on'
+            step.require_attachment_on_approve = request.POST.get('require_attachment_on_approve') == 'on'
+            step.save(update_fields=['role', 'allow_rework', 'allow_reject', 'require_attachment_on_approve'])
+            messages.success(request, f'Step {step.order} updated.')
+    return redirect('approval_flow')
+
+
+@role_required('can_manage_approval_flow')
+def workflow_step_delete(request, step_id):
+    from .models import WorkflowStep
+
+    step = get_object_or_404(WorkflowStep, pk=step_id)
+    if request.method == 'POST':
+        order = step.order
+        step.delete()
+        messages.success(request, f'Step {order} removed.')
+    return redirect('approval_flow')
+
+
+@role_required('can_manage_approval_flow')
+def workflow_step_move(request, step_id, direction):
+    from .models import WorkflowStep
+
+    if direction not in ('up', 'down'):
+        raise Http404
+    step = get_object_or_404(WorkflowStep, pk=step_id)
+    if request.method == 'POST':
+        steps = list(WorkflowStep.objects.order_by('order'))
+        idx = next(i for i, s in enumerate(steps) if s.id == step.id)
+        swap_idx = idx - 1 if direction == 'up' else idx + 1
+        if 0 <= swap_idx < len(steps):
+            other = steps[swap_idx]
+            step_order, other_order = step.order, other.order
+            # Swap via a temporary sentinel value — `order` is unique, so
+            # writing the target value directly while the other row still
+            # holds it would violate that constraint. 0 is safe: real
+            # steps are always numbered from 1.
+            WorkflowStep.objects.filter(pk=step.pk).update(order=0)
+            WorkflowStep.objects.filter(pk=other.pk).update(order=step_order)
+            WorkflowStep.objects.filter(pk=step.pk).update(order=other_order)
+    return redirect('approval_flow')
+
+
 @role_required('can_manage_users')
 def user_add(request):
     if request.method == 'POST':
@@ -287,6 +386,7 @@ def user_add(request):
             profile.role = role
             profile.department = department
             profile.phone_number = phone_number
+            profile.is_admin_created = True
             profile.save()
             
             messages.success(request, f"User '{username}' created successfully.")

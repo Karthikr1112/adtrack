@@ -17,108 +17,192 @@
         position: relative;
         display: flex;
         flex-direction: column;
-        justify-content: space-between;
-        padding: 3rem 3.5rem;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 3rem 2rem;
         color: #fff;
+        /* vivid indigo-violet gradient with soft light glows */
         background:
-            radial-gradient(900px 500px at -10% -10%, rgba(139, 92, 246, 0.45), transparent 60%),
-            radial-gradient(800px 600px at 110% 110%, rgba(56, 189, 248, 0.35), transparent 55%),
-            linear-gradient(150deg, #1e1b4b 0%, #312e81 55%, #1e3a8a 100%);
+            radial-gradient(700px 480px at 8% 0%, rgba(255, 255, 255, 0.14), transparent 55%),
+            radial-gradient(620px 460px at 100% 100%, rgba(236, 72, 153, 0.25), transparent 60%),
+            linear-gradient(160deg, #4f46e5 0%, #6d28d9 55%, #8b5cf6 100%);
         overflow: hidden;
     }
 
-    .brand-panel::after {
+    /* faint dot grid for texture */
+    .brand-panel::before {
         content: '';
         position: absolute;
         inset: 0;
-        background-image: radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px);
-        background-size: 26px 26px;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+        background-size: 28px 28px;
+        mask-image: radial-gradient(70% 70% at 50% 45%, black, transparent);
+        -webkit-mask-image: radial-gradient(70% 70% at 50% 45%, black, transparent);
         pointer-events: none;
+    }
+
+    /* slow drifting glow */
+    .brand-panel::after {
+        content: '';
+        position: absolute;
+        width: 420px;
+        height: 420px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(129, 140, 248, 0.22), transparent 65%);
+        top: -8%;
+        right: -10%;
+        animation: drift 12s ease-in-out infinite alternate;
+        pointer-events: none;
+    }
+
+    @keyframes drift {
+        from { transform: translate(0, 0) scale(1); }
+        to   { transform: translate(-60px, 70px) scale(1.15); }
+    }
+
+    /* ===== floating bubbles ===== */
+    /* selector includes .brand-panel so it beats the `.brand-panel > *`
+       positioning rule below — otherwise the container collapses and
+       clips the bubbles away */
+    .brand-panel .bubbles {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .bubbles span {
+        position: absolute;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06));
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(2px);
+        animation: floatSoft ease-in-out infinite alternate;
+    }
+
+    /* fixed positions around the panel — big and small, gently drifting */
+    .bubbles span:nth-child(1) { top: 10%;  left: 6%;   width: 140px; height: 140px; animation-duration: 9s; }
+    .bubbles span:nth-child(2) { top: 24%;  right: 8%;  width: 60px;  height: 60px;  animation-duration: 7s;  animation-delay: 1s; }
+    .bubbles span:nth-child(3) { top: 46%;  left: 3%;   width: 36px;  height: 36px;  animation-duration: 6s;  animation-delay: 2s; }
+    .bubbles span:nth-child(4) { top: 60%;  right: 4%;  width: 110px; height: 110px; animation-duration: 10s; animation-delay: 1.5s; }
+    .bubbles span:nth-child(5) { bottom: 12%; left: 12%; width: 80px; height: 80px;  animation-duration: 8s;  animation-delay: 0.5s; }
+    .bubbles span:nth-child(6) { top: 6%;   left: 46%;  width: 24px;  height: 24px;  animation-duration: 5s;  animation-delay: 2.5s; }
+    .bubbles span:nth-child(7) { bottom: 6%; right: 24%; width: 46px; height: 46px;  animation-duration: 7s;  animation-delay: 3s; }
+    .bubbles span:nth-child(8) { top: 38%;  left: 22%;  width: 18px;  height: 18px;  animation-duration: 6s;  animation-delay: 1s; }
+
+    @keyframes floatSoft {
+        from { transform: translate(0, 0); }
+        to   { transform: translate(10px, -14px); }
     }
 
     .brand-panel > * { position: relative; z-index: 2; }
 
-    .brand-mark {
+    .brand-center {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 0.75rem;
+        text-align: center;
+        max-width: 36rem;
+        animation: rise 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
     }
 
-    .brand-mark .logo-box {
-        width: 44px;
-        height: 44px;
-        border-radius: 0.9rem;
+    .brand-logo-lg {
+        width: 84px;
+        height: 84px;
+        border-radius: 1.4rem;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #818cf8, #6366f1);
-        box-shadow: 0 8px 20px -6px rgba(99, 102, 241, 0.7);
-        font-size: 1.35rem;
+        font-size: 2.2rem;
+        color: #fff;
+        background: rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 0 0 10px rgba(255, 255, 255, 0.06), 0 22px 45px -14px rgba(30, 27, 75, 0.55);
+        margin-bottom: 1.5rem;
     }
 
-    .brand-mark .brand-name {
-        font-size: 1.35rem;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-    }
-
-    .brand-hero h1 {
-        font-size: clamp(1.8rem, 3vw, 2.6rem);
+    .brand-title {
+        font-size: clamp(2.2rem, 4vw, 3rem);
         font-weight: 800;
         letter-spacing: -0.03em;
-        line-height: 1.15;
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
+        color: #fff;
+        text-shadow: 0 4px 24px rgba(30, 27, 75, 0.35);
     }
 
-    .brand-hero h1 .accent {
-        background: linear-gradient(90deg, #a5b4fc, #67e8f9);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-    }
-
-    .brand-hero p {
-        color: rgba(226, 232, 240, 0.85);
+    .brand-tagline {
+        color: rgba(203, 213, 225, 0.85);
         font-size: 1.02rem;
-        max-width: 34rem;
         line-height: 1.7;
+        max-width: 30rem;
         margin-bottom: 2.25rem;
     }
 
-    .feature-list { display: grid; gap: 1rem; max-width: 34rem; }
-
-    .feature-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.9rem;
-        padding: 0.9rem 1.1rem;
-        border-radius: 0.9rem;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.09);
-        backdrop-filter: blur(6px);
+    .feature-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        width: 100%;
+        max-width: 34rem;
     }
 
-    .feature-item .f-icon {
-        flex: 0 0 auto;
-        width: 38px;
-        height: 38px;
-        border-radius: 0.7rem;
+    .feature-card {
+        text-align: left;
+        padding: 1.15rem 1.25rem;
+        border-radius: 1.1rem;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        backdrop-filter: blur(12px);
+        box-shadow: 0 12px 28px -16px rgba(30, 27, 75, 0.45);
+        transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+        animation: rise 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .feature-card:nth-child(1) { animation-delay: 0.10s; }
+    .feature-card:nth-child(2) { animation-delay: 0.20s; }
+    .feature-card:nth-child(3) { animation-delay: 0.30s; }
+    .feature-card:nth-child(4) { animation-delay: 0.40s; }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.18);
+        box-shadow: 0 20px 38px -16px rgba(30, 27, 75, 0.6);
+    }
+
+    .feature-card .f-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 0.75rem;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.05rem;
-        background: rgba(129, 140, 248, 0.25);
-        color: #c7d2fe;
+        font-size: 1.1rem;
+        color: #fff;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 8px 18px -8px rgba(15, 23, 42, 0.5);
     }
 
-    .feature-item h6 { margin: 0 0 0.15rem; font-weight: 700; font-size: 0.95rem; color: #eef2ff; }
-    .feature-item small { color: rgba(203, 213, 225, 0.8); font-size: 0.82rem; line-height: 1.5; }
+    /* each card gets its own accent */
+    .feature-card:nth-child(1) .f-icon { background: linear-gradient(135deg, #34d399, #0ea5e9); }
+    .feature-card:nth-child(2) .f-icon { background: linear-gradient(135deg, #fbbf24, #f97316); }
+    .feature-card:nth-child(3) .f-icon { background: linear-gradient(135deg, #22d3ee, #6366f1); }
+    .feature-card:nth-child(4) .f-icon { background: linear-gradient(135deg, #f472b6, #a855f7); }
+
+    .feature-card h6 { margin: 0 0 0.15rem; font-weight: 700; font-size: 0.98rem; color: #fff; }
+    .feature-card small { color: rgba(238, 242, 255, 0.78); font-size: 0.83rem; }
 
     .brand-footer {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 1.25rem;
+        padding: 0 2.5rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        color: rgba(203, 213, 225, 0.65);
+        color: rgba(238, 242, 255, 0.6);
         font-size: 0.8rem;
     }
 
@@ -330,36 +414,35 @@
 
     <!-- Left: brand / product content -->
     <aside class="brand-panel">
-        <div class="brand-mark">
-            <div class="logo-box"><i class="bi bi-badge-ad-fill"></i></div>
-            <span class="brand-name">AdTrack</span>
+        <div class="bubbles" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
         </div>
+        <div class="brand-center">
+            <div class="brand-logo-lg"><i class="bi bi-badge-ad-fill"></i></div>
+            <h1 class="brand-title">AdTrack</h1>
+            <p class="brand-tagline">Marketing Proposal Tracker — submit proposals, route them through a fully configurable multi-level approval flow, and auto-generate Work Orders and Payment claims.</p>
 
-        <div class="brand-hero">
-            <h1>Every banner, every rupee —<br><span class="accent">tracked in one place.</span></h1>
-            <p>AdTrack is your team's outdoor marketing command center. Plan campaigns, verify on-ground placements, and keep spending transparent — from print to takedown.</p>
-
-            <div class="feature-list">
-                <div class="feature-item">
-                    <div class="f-icon"><i class="bi bi-geo-alt-fill"></i></div>
-                    <div>
-                        <h6>GPS-verified placements</h6>
-                        <small>Site photos are checked against the claimed location, so you know your banners are really up.</small>
-                    </div>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="f-icon"><i class="bi bi-signpost-2-fill"></i></div>
+                    <h6>Multi-Level Approvals</h6>
+                    <small>Your own configurable review chain</small>
                 </div>
-                <div class="feature-item">
-                    <div class="f-icon"><i class="bi bi-cash-stack"></i></div>
-                    <div>
-                        <h6>Complete cost visibility</h6>
-                        <small>Printing, installation and rental costs with bills attached — dashboards and Excel exports in one click.</small>
-                    </div>
+                <div class="feature-card">
+                    <div class="f-icon"><i class="bi bi-file-earmark-richtext-fill"></i></div>
+                    <h6>Work Orders</h6>
+                    <small>Auto-generated PO on approval</small>
                 </div>
-                <div class="feature-item">
-                    <div class="f-icon"><i class="bi bi-people-fill"></i></div>
-                    <div>
-                        <h6>Role-based team access</h6>
-                        <small>Admins, managers and field staff each see exactly what they need — nothing more.</small>
-                    </div>
+                <div class="feature-card">
+                    <div class="f-icon"><i class="bi bi-cash-coin"></i></div>
+                    <h6>Payments</h6>
+                    <small>Bill uploads & approval tracking</small>
+                </div>
+                <div class="feature-card">
+                    <div class="f-icon"><i class="bi bi-bar-chart-fill"></i></div>
+                    <h6>Live Dashboard</h6>
+                    <small>Charts & KPIs in real-time</small>
                 </div>
             </div>
         </div>
@@ -405,7 +488,7 @@
                 <label class="field-label" for="username">Email or Employee ID</label>
                 <div class="input-shell">
                     <input type="text" class="pro-input" id="username" name="username"
-                           placeholder="you@company.com" autocomplete="username" required autofocus>
+                           placeholder="Enter your Email or ID" autocomplete="username" required autofocus>
                     <i class="bi bi-person lead-icon"></i>
                 </div>
 

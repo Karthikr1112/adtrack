@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block title %}Edit Banner · AdTrack{% endblock %}
-{% block page_title %}Edit Banner{% endblock %}
+{% block title %}Edit Proposal · AdTrack{% endblock %}
+{% block page_title %}Edit Proposal{% endblock %}
 {% block content %}
 
 <div class="row justify-content-center">
@@ -8,129 +8,630 @@
         <!-- Breadcrumb -->
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-3">
-                <li class="breadcrumb-item"><a href="{% url 'banner_list' %}" class="text-decoration-none">Banners</a></li>
-                <li class="breadcrumb-item"><a href="{% url 'banner_detail' banner.pk %}" class="text-decoration-none">{{ banner.poster_name }}</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'banner_list' %}" class="text-decoration-none">Proposals</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'banner_detail' banner.pk %}" class="text-decoration-none">{{ banner.proposal_number|default:banner.campaign.name|default:"Proposal" }}</a></li>
                 <li class="breadcrumb-item active" aria-current="page">Edit</li>
             </ol>
         </nav>
 
-        <form method="post" enctype="multipart/form-data" novalidate>
+        {% if needs_rework %}
+        <div class="alert alert-info d-flex align-items-start gap-2 mb-4 shadow-sm" style="border-radius: 0.75rem;">
+            <i class="bi bi-arrow-counterclockwise fs-5 mt-1 text-primary"></i>
+            <div>
+                <strong>This proposal was sent back for rework.</strong>
+                {% if rework_note %}
+                <div class="small mt-1">{{ rework_note.stage|title }}'s comment: "{{ rework_note.comment }}"</div>
+                {% endif %}
+                <div class="small mt-1">Make the necessary changes and save — it will be resubmitted for Coordinator review automatically.</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" novalidate id="proposalForm">
             {% csrf_token %}
-            
-            <!-- Banner Details Card -->
-            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
-                <div class="card-header bg-white py-3 border-bottom">
-                    <h5 class="card-title mb-0 fw-bold text-primary">
-                        <i class="bi bi-info-circle me-2"></i>1. Banner Details
-                    </h5>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row">
-                        {% for field in form %}
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary small">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
-                            {{ field }}
-                            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
 
-            <!-- Placement Details Card -->
-            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
-                <div class="card-header bg-white py-3 border-bottom">
-                    <h5 class="card-title mb-0 fw-bold text-primary">
-                        <i class="bi bi-geo-alt-fill me-2"></i>2. Placement Details
-                    </h5>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row">
-                        {% for field in placement_form %}
-                        {% if field.name == 'location_name' or field.name == 'address' %}
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary small">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
-                            {{ field }}
-                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                        </div>
-                        {% elif field.name == 'latitude' or field.name == 'longitude' %}
-                            {{ field }}
-                        {% endif %}
-                        {% endfor %}
-                    </div>
-
-                    <div class="mb-3 p-3 border rounded bg-light">
-                        <label class="form-label small fw-semibold mb-2 text-dark">
-                            <i class="bi bi-camera-fill me-1"></i>Take a Live Photo of this Location
-                        </label>
-                        <input type="file" name="site_photo" accept="image/*" capture="environment" multiple class="form-control form-control-sm">
-                        <div class="form-text">Opens your camera to capture a live photo — used to verify the placement location.</div>
-                        <input type="hidden" name="site_photo_latitude" data-geo="lat">
-                        <input type="hidden" name="site_photo_longitude" data-geo="lng">
-                        <input type="hidden" name="latitude" data-geo="lat">
-                        <input type="hidden" name="longitude" data-geo="lng">
-                    </div>
-
-                    <div class="mb-3">
-                        <button type="button" class="btn btn-outline-secondary btn-sm capture-gps-btn">
-                            <i class="bi bi-crosshair me-1"></i>Capture Current GPS Location
-                        </button>
-                        <span class="ms-2 small text-muted gps-status"></span>
-                    </div>
-
-                    <div class="row">
-                        {% for field in placement_form %}
-                        {% if field.name == 'placed_date' or field.name == 'removal_date' %}
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary small">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
-                            {{ field }}
-                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                        </div>
-                        {% endif %}
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Cost Details Card -->
-            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
-                <div class="card-header bg-white py-3 border-bottom">
-                    <h5 class="card-title mb-0 fw-bold text-primary">
-                        <i class="bi bi-currency-rupee me-2"></i>3. Cost Details
-                    </h5>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row">
-                        {% for field in cost_form %}
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary small">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
-                            {{ field }}
-                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-
-            {% if form.non_field_errors or placement_form.non_field_errors or cost_form.non_field_errors %}
-            <div class="alert alert-danger mb-4">
-                {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
-                {% if placement_form.non_field_errors %}{{ placement_form.non_field_errors }}{% endif %}
-                {% if cost_form.non_field_errors %}{{ cost_form.non_field_errors }}{% endif %}
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger shadow-sm d-flex align-items-center gap-2 mb-4">
+                <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                <div>{{ form.non_field_errors }}</div>
             </div>
             {% endif %}
 
-            <div class="d-flex justify-content-end gap-2 mb-5">
-                <a href="{% url 'banner_detail' banner.pk %}" class="btn btn-outline-secondary">
+            <!-- 1. Campaign & Schedule -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-megaphone-fill me-2"></i>Campaign &amp; Schedule</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.campaign.id_for_label }}" class="form-label fw-semibold text-secondary">Campaign Name <span class="text-danger">*</span></label>
+                            {{ form.campaign }}
+                            {% for error in form.campaign.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.vendor.id_for_label }}" class="form-label fw-semibold text-secondary">Vendor <span class="text-danger">*</span></label>
+                            {{ form.vendor }}
+                            {% for error in form.vendor.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.start_date.id_for_label }}" class="form-label fw-semibold text-secondary">Start Date <span class="text-danger">*</span></label>
+                            {{ form.start_date }}
+                            {% for error in form.start_date.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.end_date.id_for_label }}" class="form-label fw-semibold text-secondary">End Date <span class="text-danger">*</span></label>
+                            {{ form.end_date }}
+                            {% for error in form.end_date.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Category, Subcategory & Department -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-tags-fill me-2"></i>Category &amp; Department</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.category.id_for_label }}" class="form-label fw-semibold text-secondary">Category <span class="text-danger">*</span></label>
+                            {{ form.category }}
+                            {% for error in form.category.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.subcategory.id_for_label }}" class="form-label fw-semibold text-secondary">Subcategory <span class="text-danger">*</span></label>
+                            {{ form.subcategory }}
+                            {% for error in form.subcategory.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.department.id_for_label }}" class="form-label fw-semibold text-secondary">Department <span class="text-danger">*</span></label>
+                            {{ form.department }}
+                            {% for error in form.department.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Sizing & Pricing (Multiple Orders) -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-box-seam me-2"></i>Sizing &amp; Pricing</h6>
+                        <span id="orderCountBadge" class="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold px-2 py-1">{{ items|length }} Orders</span>
+                    </div>
+                    <button type="button" id="addOrderBtnTop" class="btn btn-sm btn-outline-primary fw-semibold d-flex align-items-center gap-1">
+                        <i class="bi bi-plus-lg"></i> Add Extra Order
+                    </button>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Orders List Container -->
+                    <div id="ordersContainer" class="d-flex flex-column gap-3 mb-3">
+                        {% for item in items %}
+                        <div class="order-item-card p-3 rounded-3 border bg-light-subtle shadow-xs" data-order-idx="{{ forloop.counter }}">
+                            <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-primary text-white fw-bold px-3 py-1.5 order-badge" style="font-size: 0.85rem;">
+                                        Order #<span class="order-number-text">{{ forloop.counter }}</span>
+                                    </span>
+                                </div>
+                                <button type="button" class="btn btn-outline-danger btn-sm remove-order-btn py-1 px-2" title="Delete this order row" {% if items|length == 1 %}style="display: none;"{% endif %}>
+                                    <i class="bi bi-trash3 me-1"></i>Remove
+                                </button>
+                            </div>
+
+                            <!-- Line 1: Medium, Dimensions & Measurement -->
+                            <div class="row g-2 align-items-end mb-2 pb-1">
+                                <!-- Medium -->
+                                <div class="col-md-4 col-sm-12">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Medium</label>
+                                    <select name="item_medium" class="form-select form-select-sm item-medium">
+                                        <option value="">Select Medium</option>
+                                        {% for med in mediums %}
+                                        <option value="{{ med.id }}" {% if item.medium_id|stringformat:"s" == med.id|stringformat:"s" %}selected{% endif %}>{{ med.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <!-- Height -->
+                                <div class="col-md-2 col-sm-6 col-6">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Height <span class="text-danger">*</span></label>
+                                    <input type="number" step="0.01" min="0.01" name="item_height" class="form-control form-control-sm item-height" placeholder="H" value="{{ item.height }}" required>
+                                </div>
+
+                                <!-- Width -->
+                                <div class="col-md-2 col-sm-6 col-6">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Width <span class="text-danger">*</span></label>
+                                    <input type="number" step="0.01" min="0.01" name="item_width" class="form-control form-control-sm item-width" placeholder="W" value="{{ item.width }}" required>
+                                </div>
+
+                                <!-- Square Feet (Auto: H * W) -->
+                                <div class="col-md-2 col-sm-6 col-6">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Sq. Ft. <span class="text-muted" style="font-size: 0.7rem;">(H × W)</span></label>
+                                    <input type="text" name="item_square_feet" class="form-control form-control-sm item-sqft bg-white fw-bold text-dark" placeholder="0.00" value="{{ item.square_feet }}" readonly tabindex="-1">
+                                </div>
+
+                                <!-- Size Unit -->
+                                <div class="col-md-2 col-sm-6 col-6">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Unit <span class="text-danger">*</span></label>
+                                    <select name="item_size_unit" class="form-select form-select-sm item-size-unit">
+                                        {% for code, label in size_units %}
+                                        <option value="{{ code }}" {% if item.size_unit == code %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Line 2: Quantity, Pricing, Location & Tax -->
+                            <div class="row g-2 align-items-end">
+                                <!-- Quantity -->
+                                <div class="col-md-2 col-sm-4 col-6">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Qty <span class="text-danger">*</span></label>
+                                    <input type="number" min="1" name="item_quantity" class="form-control form-control-sm item-quantity" value="{{ item.quantity|default:1 }}" required>
+                                </div>
+
+                                <!-- Unit Price -->
+                                <div class="col-md-2 col-sm-4 col-6">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Rate (₹) <span class="text-danger">*</span></label>
+                                    <input type="number" step="0.01" min="0" name="item_unit_price" class="form-control form-control-sm item-unit-price" placeholder="0.00" value="{{ item.unit_price|default:0 }}" required>
+                                </div>
+
+                                <!-- Extra Charge -->
+                                <div class="col-md-2 col-sm-4 col-6">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Extra (₹)</label>
+                                    <input type="number" step="0.01" min="0" name="item_extra_charge" class="form-control form-control-sm item-extra-charge" placeholder="Optional" value="{{ item.extra_charge }}">
+                                </div>
+
+                                <!-- Store Name (Manual typing box placed after Extra column) -->
+                                <div class="col-md-3 col-sm-6 col-12">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Store Name <span class="text-danger">*</span></label>
+                                    <input type="text" name="item_store_name" class="form-control form-control-sm item-store-name" placeholder="Enter store name" value="{{ item.store_name|default:'' }}" required>
+                                </div>
+
+                                <!-- Tax / GST Slab -->
+                                <div class="col-md-3 col-sm-6 col-12">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Tax Slab</label>
+                                    <select name="item_tax_rate" class="form-select form-select-sm item-tax-rate">
+                                        <option value="0.00" {% if item.tax_rate == '0.00' or item.tax_rate == 0 %}selected{% endif %}>0% (Exempt)</option>
+                                        <option value="0.05" {% if item.tax_rate == '0.05' or item.tax_rate == 0.05 %}selected{% endif %}>5% GST</option>
+                                        <option value="0.10" {% if item.tax_rate == '0.10' or item.tax_rate == 0.1 %}selected{% endif %}>10% Tax</option>
+                                        <option value="0.12" {% if item.tax_rate == '0.12' or item.tax_rate == 0.12 %}selected{% endif %}>12% GST</option>
+                                        <option value="0.18" {% if item.tax_rate == '0.18' or item.tax_rate == 0.18 or not item.tax_rate %}selected{% endif %}>18% GST</option>
+                                        <option value="0.28" {% if item.tax_rate == '0.28' or item.tax_rate == 0.28 %}selected{% endif %}>28% GST</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end align-items-center flex-wrap gap-3 mt-2 pt-2 border-top">
+                                <span class="text-muted small">Subtotal: <span class="fw-semibold text-dark item-base-display">₹{{ item.total_amount|default:"0.00" }}</span></span>
+                                <span class="text-muted small">+ Tax: <span class="fw-semibold text-secondary item-tax-display">₹{{ item.tax_amount|default:"0.00" }}</span></span>
+                                <span class="text-muted small">Item Total: <span class="fw-bold text-primary fs-6 item-total-display">₹{{ item.grand_total|default:item.total_amount|default:"0.00" }}</span></span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Add Extra Order Button -->
+                    <button type="button" id="addOrderBtn" class="btn btn-outline-primary w-100 py-2.5 fw-semibold d-flex align-items-center justify-content-center gap-2 mb-3" style="border-style: dashed; border-width: 2px; border-radius: 0.6rem; background-color: #f8fbff;">
+                        <i class="bi bi-plus-circle-fill fs-5"></i>
+                        <span>Add Extra Order (<span id="nextOrderBadge">Order #{{ items|length|add:1 }}</span>)</span>
+                    </button>
+
+                    <!-- Live Summary Card -->
+                    <div class="p-3 rounded-3 mt-2" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+                        <div class="row text-center gy-2 align-items-center">
+                            <div class="col-4">
+                                <div class="text-muted small fw-semibold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Total Amount</div>
+                                <div class="fw-bold text-dark fs-6" id="summaryTotal">₹0.00</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-muted small fw-semibold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Total Tax (GST)</div>
+                                <div class="fw-bold text-dark fs-6" id="summaryTax">₹0.00</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-muted small fw-semibold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">Grand Total</div>
+                                <div class="fw-bold text-primary fs-5" id="summaryGrandTotal">₹0.00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Quotation Upload (Captions) -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-images me-2"></i>Quotation Upload</h6>
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle small fw-semibold">Quotations 1 &amp; 2 are Mandatory</span>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        {% for field_name, field, existing in captions %}
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                {% if field_name == 'caption_1' %}Quotation 1 <span class="text-danger">*</span>{% elif field_name == 'caption_2' %}Quotation 2 <span class="text-danger">*</span>{% else %}Quotation 3 <span class="text-muted">(Optional)</span>{% endif %}
+                            </label>
+                            {% if existing %}
+                            <div class="d-flex align-items-center gap-2 mb-2 p-2 border rounded small bg-light">
+                                <i class="bi bi-paperclip text-primary fs-6"></i>
+                                <span class="text-truncate flex-grow-1 font-monospace" style="font-size: 0.8rem;">{{ existing.name|slice:"-25:" }}</span>
+                                <a href="{{ existing.url }}" download class="btn btn-sm btn-outline-primary py-0 px-1.5" title="Download current file"><i class="bi bi-download"></i></a>
+                            </div>
+                            {% endif %}
+                            {{ field }}
+                            <div class="form-text">Image or PDF, up to 15 MB. {% if existing %}Upload only to replace.{% endif %}</div>
+                            {% for error in field.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Execution Locations (Old Style: Dropdown Store selection + Nearby Image Upload) -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-geo-alt-fill me-2"></i>Execution Locations</h6>
+                        <small class="text-muted">Select store from dropdown and upload location photo.</small>
+                    </div>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row align-items-start">
+                        <!-- Store Dropdown -->
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.store.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                Select Store <span class="text-muted small">(Dropdown)</span>
+                            </label>
+                            {{ form.store }}
+                            <div class="form-text">Choose from saved stores (managed in Admin).</div>
+                            {% for error in form.store.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+
+                        <!-- Store / Location Photo Upload (Nearby!) -->
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.location_photo.id_for_label }}" class="form-label fw-semibold text-secondary">
+                                Store / Location Image <span class="text-muted small">(Optional)</span>
+                            </label>
+                            {% if location_photo_file %}
+                            <div class="d-flex align-items-center gap-2 mb-2 p-2 border rounded small bg-light">
+                                <i class="bi bi-image text-primary fs-6"></i>
+                                <span class="text-truncate flex-grow-1 font-monospace" style="font-size: 0.8rem;">{{ location_photo_file.name|slice:"-25:" }}</span>
+                                <a href="{{ location_photo_file.url }}" download class="btn btn-sm btn-outline-primary py-0 px-1.5" title="Download current photo"><i class="bi bi-download"></i></a>
+                            </div>
+                            {% endif %}
+                            {{ form.location_photo }}
+                            <div class="form-text">Upload photo of store/placement site (up to 15 MB). {% if location_photo_file %}Upload to replace.{% endif %}</div>
+                            {% for error in form.location_photo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. Final Summary & Supporting Attachment -->
+            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-clipboard-check me-2"></i>Final Summary</h6>
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-3">
+                        <label for="{{ form.remarks.id_for_label }}" class="form-label fw-semibold text-secondary">
+                            Remarks / Justification <span class="text-danger">*</span>
+                        </label>
+                        {{ form.remarks }}
+                        <div class="form-text">Mandatory — justification and notes before submitting for approval.</div>
+                        {% for error in form.remarks.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+
+                    <div class="mt-3 pt-3 border-top">
+                        <label for="{{ form.summary_attachment.id_for_label }}" class="form-label fw-semibold text-secondary">
+                            Supporting Attachment <span class="text-muted">(Optional — Image or PDF)</span>
+                        </label>
+                        {% if summary_attachment_file %}
+                        <div class="d-flex align-items-center gap-2 mb-2 p-2 border rounded small bg-light" style="max-width: 400px;">
+                            <i class="bi bi-paperclip text-primary fs-6"></i>
+                            <span class="text-truncate flex-grow-1 font-monospace" style="font-size: 0.8rem;">{{ summary_attachment_file.name|slice:"-25:" }}</span>
+                            <a href="{{ summary_attachment_file.url }}" download class="btn btn-sm btn-outline-primary py-0 px-1.5" title="Download current attachment"><i class="bi bi-download"></i></a>
+                        </div>
+                        {% endif %}
+                        {{ form.summary_attachment }}
+                        <div class="form-text">Image or PDF, up to 15 MB. {% if summary_attachment_file %}Choose a new file to replace it.{% endif %}</div>
+                        {% for error in form.summary_attachment.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 pt-2 mb-5">
+                <a href="{% url 'banner_detail' banner.pk %}" class="btn btn-outline-secondary px-4">
                     Cancel
                 </a>
-                <button type="submit" class="btn btn-success px-4">
-                    Save All Changes
+                <button type="submit" class="btn btn-success px-4 shadow-sm">
+                    <i class="bi bi-check-circle me-1"></i>{% if needs_rework %}Resubmit for Approval{% else %}Save Changes{% endif %}
                 </button>
             </div>
         </form>
     </div>
 </div>
 
+<!-- Template for new order items -->
+<template id="orderRowTemplate">
+    <div class="order-item-card p-3 rounded-3 border bg-light-subtle shadow-xs" data-order-idx="__IDX__">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary text-white fw-bold px-3 py-1.5 order-badge" style="font-size: 0.85rem;">
+                    Order #<span class="order-number-text">__NUM__</span>
+                </span>
+            </div>
+            <button type="button" class="btn btn-outline-danger btn-sm remove-order-btn py-1 px-2" title="Delete this order row">
+                <i class="bi bi-trash3 me-1"></i>Remove
+            </button>
+        </div>
+
+        <!-- Line 1: Medium, Dimensions & Measurement -->
+        <div class="row g-2 align-items-end mb-2 pb-1">
+            <!-- Medium -->
+            <div class="col-md-4 col-sm-12">
+                <label class="form-label small fw-semibold text-secondary mb-1">Medium</label>
+                <select name="item_medium" class="form-select form-select-sm item-medium">
+                    <option value="">Select Medium</option>
+                    {% for med in mediums %}
+                    <option value="{{ med.id }}">{{ med.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Height -->
+            <div class="col-md-2 col-sm-6 col-6">
+                <label class="form-label small fw-semibold text-secondary mb-1">Height <span class="text-danger">*</span></label>
+                <input type="number" step="0.01" min="0.01" name="item_height" class="form-control form-control-sm item-height" placeholder="H" required>
+            </div>
+
+            <!-- Width -->
+            <div class="col-md-2 col-sm-6 col-6">
+                <label class="form-label small fw-semibold text-secondary mb-1">Width <span class="text-danger">*</span></label>
+                <input type="number" step="0.01" min="0.01" name="item_width" class="form-control form-control-sm item-width" placeholder="W" required>
+            </div>
+
+            <!-- Square Feet -->
+            <div class="col-md-2 col-sm-6 col-6">
+                <label class="form-label small fw-semibold text-secondary mb-1">Sq. Ft. <span class="text-muted" style="font-size: 0.7rem;">(H × W)</span></label>
+                <input type="text" name="item_square_feet" class="form-control form-control-sm item-sqft bg-white fw-bold text-dark" placeholder="0.00" readonly tabindex="-1">
+            </div>
+
+            <!-- Size Unit -->
+            <div class="col-md-2 col-sm-6 col-6">
+                <label class="form-label small fw-semibold text-secondary mb-1">Unit <span class="text-danger">*</span></label>
+                <select name="item_size_unit" class="form-select form-select-sm item-size-unit">
+                    {% for code, label in size_units %}
+                    <option value="{{ code }}" {% if code == 'feet' %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Line 2: Quantity, Pricing, Location & Tax -->
+        <div class="row g-2 align-items-end">
+            <!-- Quantity -->
+            <div class="col-md-2 col-sm-4 col-6">
+                <label class="form-label small fw-semibold text-secondary mb-1">Qty <span class="text-danger">*</span></label>
+                <input type="number" min="1" name="item_quantity" class="form-control form-control-sm item-quantity" value="1" required>
+            </div>
+
+            <!-- Unit Price -->
+            <div class="col-md-2 col-sm-4 col-6">
+                <label class="form-label small fw-semibold text-secondary mb-1">Rate (₹) <span class="text-danger">*</span></label>
+                <input type="number" step="0.01" min="0" name="item_unit_price" class="form-control form-control-sm item-unit-price" placeholder="0.00" value="0" required>
+            </div>
+
+            <!-- Extra Charge -->
+            <div class="col-md-2 col-sm-4 col-6">
+                <label class="form-label small fw-semibold text-secondary mb-1">Extra (₹)</label>
+                <input type="number" step="0.01" min="0" name="item_extra_charge" class="form-control form-control-sm item-extra-charge" placeholder="Optional">
+            </div>
+
+            <!-- Store Name (Manual typing box) -->
+            <div class="col-md-3 col-sm-6 col-12">
+                <label class="form-label small fw-semibold text-secondary mb-1">Store Name <span class="text-danger">*</span></label>
+                <input type="text" name="item_store_name" class="form-control form-control-sm item-store-name" placeholder="Enter store name" required>
+            </div>
+
+            <!-- Tax / GST Slab -->
+            <div class="col-md-3 col-sm-6 col-12">
+                <label class="form-label small fw-semibold text-secondary mb-1">Tax Slab</label>
+                <select name="item_tax_rate" class="form-select form-select-sm item-tax-rate">
+                    <option value="0.00">0% (Exempt)</option>
+                    <option value="0.05">5% GST</option>
+                    <option value="0.10">10% Tax</option>
+                    <option value="0.12">12% GST</option>
+                    <option value="0.18" selected>18% GST</option>
+                    <option value="0.28">28% GST</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end align-items-center flex-wrap gap-3 mt-2 pt-2 border-top">
+            <span class="text-muted small">Subtotal: <span class="fw-semibold text-dark item-base-display">₹0.00</span></span>
+            <span class="text-muted small">+ Tax: <span class="fw-semibold text-secondary item-tax-display">₹0.00</span></span>
+            <span class="text-muted small">Item Total: <span class="fw-bold text-primary fs-6 item-total-display">₹0.00</span></span>
+        </div>
+    </div>
+</template>
+
+<style>
+.store-select-pill {
+    transition: all 0.15s ease-in-out;
+}
+.store-select-pill:hover {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+.store-select-pill.active {
+    background-color: #eff6ff !important;
+    border-color: #3b82f6 !important;
+}
+.order-item-card {
+    transition: all 0.2s ease;
+    border-color: #e2e8f0 !important;
+}
+.order-item-card:hover {
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('proposalForm');
+    if (!form) return;
+
+    var ordersContainer = document.getElementById('ordersContainer');
+    var addOrderBtn = document.getElementById('addOrderBtn');
+    var addOrderBtnTop = document.getElementById('addOrderBtnTop');
+    var template = document.getElementById('orderRowTemplate');
+    var orderCountBadge = document.getElementById('orderCountBadge');
+    var nextOrderBadge = document.getElementById('nextOrderBadge');
+
+    var totalEl = document.getElementById('summaryTotal');
+    var taxEl = document.getElementById('summaryTax');
+    var grandEl = document.getElementById('summaryGrandTotal');
+
+    function formatRupee(n) {
+        return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function reindexOrders() {
+        var cards = ordersContainer.querySelectorAll('.order-item-card');
+        cards.forEach(function (card, index) {
+            var num = index + 1;
+            card.setAttribute('data-order-idx', num);
+            var numText = card.querySelector('.order-number-text');
+            if (numText) numText.textContent = num;
+
+            var removeBtn = card.querySelector('.remove-order-btn');
+            if (removeBtn) {
+                removeBtn.style.display = (cards.length > 1) ? 'inline-block' : 'none';
+            }
+        });
+
+        if (orderCountBadge) {
+            orderCountBadge.textContent = cards.length + (cards.length === 1 ? ' Order' : ' Orders');
+        }
+        if (nextOrderBadge) {
+            nextOrderBadge.textContent = 'Order #' + (cards.length + 1);
+        }
+    }
+
+    function recalcOrderRow(card) {
+        var hInput = card.querySelector('.item-height');
+        var wInput = card.querySelector('.item-width');
+        var sqftInput = card.querySelector('.item-sqft');
+        var qtyInput = card.querySelector('.item-quantity');
+        var priceInput = card.querySelector('.item-unit-price');
+        var extraInput = card.querySelector('.item-extra-charge');
+        var taxSelect = card.querySelector('.item-tax-rate');
+        var baseDisplay = card.querySelector('.item-base-display');
+        var taxDisplay = card.querySelector('.item-tax-display');
+        var totalDisplay = card.querySelector('.item-total-display');
+
+        var h = parseFloat(hInput && hInput.value) || 0;
+        var w = parseFloat(wInput && wInput.value) || 0;
+        var sqft = h * w;
+        if (sqftInput) sqftInput.value = sqft.toFixed(2);
+
+        var qtyVal = qtyInput ? qtyInput.value.trim() : '';
+        var qty = qtyVal === '' ? 1 : (parseInt(qtyVal, 10) || 0);
+        var price = parseFloat(priceInput && priceInput.value) || 0;
+        var extra = parseFloat(extraInput && extraInput.value) || 0;
+
+        // Base Amount = (Square Feet × Quantity × Unit Price) + Extra Charge
+        var baseTotal = (sqft * qty * price) + extra;
+        var taxRate = parseFloat(taxSelect && taxSelect.value) || 0;
+        var taxAmt = baseTotal * taxRate;
+        var grandTotal = baseTotal + taxAmt;
+
+        if (baseDisplay) baseDisplay.textContent = formatRupee(baseTotal);
+        if (taxDisplay) taxDisplay.textContent = formatRupee(taxAmt);
+        if (totalDisplay) totalDisplay.textContent = formatRupee(grandTotal);
+
+        return {
+            baseTotal: baseTotal,
+            taxAmt: taxAmt,
+            grandTotal: grandTotal,
+        };
+    }
+
+    function recalcAll() {
+        var cards = ordersContainer.querySelectorAll('.order-item-card');
+        var totalAmount = 0;
+        var totalTax = 0;
+        cards.forEach(function (card) {
+            var res = recalcOrderRow(card);
+            totalAmount += res.baseTotal;
+            totalTax += res.taxAmt;
+        });
+
+        var grand = totalAmount + totalTax;
+
+        if (totalEl) totalEl.textContent = formatRupee(totalAmount);
+        if (taxEl) taxEl.textContent = formatRupee(totalTax);
+        if (grandEl) grandEl.textContent = formatRupee(grand);
+    }
+
+    function bindCardEvents(card) {
+        var inputs = card.querySelectorAll('input, select');
+        inputs.forEach(function (inp) {
+            inp.addEventListener('input', recalcAll);
+            inp.addEventListener('change', recalcAll);
+        });
+
+        var removeBtn = card.querySelector('.remove-order-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function () {
+                var cards = ordersContainer.querySelectorAll('.order-item-card');
+                if (cards.length > 1) {
+                    card.remove();
+                    reindexOrders();
+                    recalcAll();
+                }
+            });
+        }
+    }
+
+    function addNewOrder() {
+        var count = ordersContainer.querySelectorAll('.order-item-card').length + 1;
+        var html = template.innerHTML.replace(/__IDX__/g, count).replace(/__NUM__/g, count);
+        var tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html.trim();
+        var newCard = tempDiv.firstElementChild;
+        ordersContainer.appendChild(newCard);
+        bindCardEvents(newCard);
+        reindexOrders();
+        recalcAll();
+    }
+
+    if (addOrderBtn) addOrderBtn.addEventListener('click', addNewOrder);
+    if (addOrderBtnTop) addOrderBtnTop.addEventListener('click', addNewOrder);
+
+    ordersContainer.querySelectorAll('.order-item-card').forEach(bindCardEvents);
+    reindexOrders();
+    recalcAll();
+
+    // Auto-fill Store Name in Sizing & Pricing when Store Dropdown in Execution Locations is selected
+    var storeSelect = form.querySelector('#{{ form.store.id_for_label }}');
+    if (storeSelect) {
+        storeSelect.addEventListener('change', function () {
+            var opt = storeSelect.options[storeSelect.selectedIndex];
+            if (opt && opt.value) {
+                var text = opt.textContent.replace(/\s*\([^)]*\)$/, '').trim();
+                var firstStoreInput = ordersContainer.querySelector('.item-store-name');
+                if (firstStoreInput && !firstStoreInput.value.trim()) {
+                    firstStoreInput.value = text;
+                }
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
