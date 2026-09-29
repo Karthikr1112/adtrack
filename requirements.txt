@@ -1,30 +1,56 @@
 # AdTrack — production dependencies
 # Install with: pip install -r requirements.txt
 
-# Core
+# Core Framework & Configuration
 Django==5.2.16
 python-decouple==3.8
+asgiref==3.11.1
+sqlparse==0.5.5
+tzdata==2026.3
 
-# Admin theme
+# Admin Theme
 django-jazzmin==3.0.5
 
-# Excel export
+# Excel Export
 openpyxl==3.1.5
+et_xmlfile==2.0.0
 
-# Image handling (ImageField + upload compression)
+# Image Handling (ImageField + upload compression)
 pillow==12.3.0
 
-# GPS distance check for placement photo verification
+# GPS Distance Check (Placement photo verification)
 geopy==2.5.0
+geographiclib==2.1
 
-# Work Order PDF generation
+# Work Order PDF Generation
 xhtml2pdf==0.2.17
+reportlab==4.5.1
+pypdf==6.14.2
+html5lib==1.1
+svglib==2.0.2
+tinycss2==1.5.1
+cssselect2==0.9.0
+arabic-reshaper==3.0.1
+python-bidi==0.6.11
+pyHanko==0.35.2
+pyhanko-certvalidator==0.31.1
 
-# StyleHR login API calls
+# StyleHR Login API & HTTP Requests
 requests==2.34.2
+urllib3==2.7.0
+certifi==2026.6.17
+charset-normalizer==3.4.9
+idna==3.18
 
-# Production server (Linux) — not used on Windows dev
-gunicorn==23.0.0
-
-# MySQL driver (Linux production; needs: apt install libmysqlclient-dev build-essential python3-dev)
+# Database Drivers
+PyMySQL==1.2.0
 mysqlclient==2.2.7
+
+# Cryptography & Security
+cryptography==49.0.0
+cffi==2.1.0
+pycparser==3.0
+PyYAML==6.0.3
+
+# Production Server (Linux)
+gunicorn==23.0.0
