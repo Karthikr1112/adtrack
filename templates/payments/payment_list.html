@@ -3,19 +3,86 @@
 {% block title %}Payments Records · AdTrack{% endblock %}
 {% block page_title %}Payments Records{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-start gap-3 mb-4 flex-wrap">
+<!-- Header & Action Row -->
+<div class="d-flex justify-content-between align-items-center mb-4 page-header-row flex-wrap gap-2">
     <div>
         <h4 class="mb-1 text-dark fw-bold">Payments Records</h4>
         <p class="text-muted small mb-0">Every payment claim submitted against a Work Order, and its approval status.</p>
     </div>
-    {% if user|has_permission:"can_add_payment" %}
-    <a href="{% url 'payment_upload' %}" class="btn btn-primary d-flex align-items-center gap-2">
-        <i class="bi bi-plus-circle"></i>Submit Payment
-    </a>
-    {% endif %}
+    <div class="d-flex gap-2 flex-shrink-0">
+        <a href="{% url 'export_payments_excel' %}{% if querystring %}?{{ querystring }}{% endif %}" class="btn btn-outline-success shadow-sm d-flex align-items-center gap-2">
+            <i class="bi bi-file-earmark-excel"></i><span>Export Excel</span>
+        </a>
+        {% if user|has_permission:"can_add_payment" %}
+        <a href="{% url 'payment_upload' %}" class="btn btn-primary shadow-sm d-flex align-items-center gap-2">
+            <i class="bi bi-plus-circle"></i><span>Submit Payment</span>
+        </a>
+        {% endif %}
+    </div>
 </div>
 
+<!-- Filters Card -->
+<div class="card border shadow-sm mb-4" style="border-radius: 0.75rem; background-color: #ffffff;">
+    <div class="card-body p-3">
+        <form method="get" class="row gy-3 gx-2 align-items-end">
+            <!-- Search -->
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-semibold text-secondary mb-1">Search</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm border-start-0" placeholder="Payment #, Work Order #, Vendor, Location..." style="background-color: #fafbfc;">
+                </div>
+            </div>
+
+            <!-- Date Range -->
+            <div class="col-6 col-md-3">
+                <label class="form-label small fw-semibold text-secondary mb-1">Date Range</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-calendar3"></i></span>
+                    <input type="text" name="date_range" id="payment_date_range_picker" value="{{ request.GET.date_range }}" class="form-control form-control-sm border-start-0" placeholder="Select Date Range" style="background-color: #fafbfc;">
+                </div>
+            </div>
+
+            <!-- Status -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-secondary mb-1">Status</label>
+                <select name="status" class="form-select form-select-sm" style="background-color: #fafbfc;">
+                    <option value="">All Statuses</option>
+                    {% for value, label in approval_choices %}
+                    <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Sort By -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-secondary mb-1">Sort By</label>
+                <select name="sort" class="form-select form-select-sm" style="background-color: #fafbfc;">
+                    <option value="-created_at" {% if request.GET.sort == '-created_at' or not request.GET.sort %}selected{% endif %}>Newest First</option>
+                    <option value="created_at" {% if request.GET.sort == 'created_at' %}selected{% endif %}>Oldest First</option>
+                    <option value="payment_number" {% if request.GET.sort == 'payment_number' %}selected{% endif %}>Payment # (A–Z)</option>
+                </select>
+            </div>
+
+            <!-- Buttons -->
+            <div class="col-6 col-md-1 d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100 shadow-sm" title="Apply filters">
+                    <i class="bi bi-funnel"></i>
+                </button>
+                <a href="{% url 'payment_list' %}" class="btn btn-outline-secondary btn-sm" title="Reset filters">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Table Card -->
 <div class="card border shadow-sm" style="border-radius: 0.75rem; background-color: #ffffff;">
     <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
         <span class="fw-bold text-dark fs-6"><i class="bi bi-cash-stack me-2 text-primary"></i>All Payment Claims</span>
@@ -27,6 +94,8 @@
                     <th class="ps-4 py-3 text-start">Payment #</th>
                     <th class="py-3 text-start">Work Order #</th>
                     <th class="py-3 text-start">Proposal #</th>
+                    <th class="py-3 text-start">Vendor</th>
+                    <th class="py-3 text-start">Stores / Location</th>
                     <th class="py-3 text-center">Status</th>
                     <th class="py-3 text-center">Submitted By</th>
                     <th class="py-3 text-center">Date</th>
@@ -38,7 +107,9 @@
                 <tr>
                     <td class="ps-4 py-3 fw-semibold text-primary font-monospace" style="font-size: 0.85rem;">{{ claim.payment_number }}</td>
                     <td class="py-3 font-monospace" style="font-size: 0.85rem;">{{ claim.work_order.po_number|default:"—" }}</td>
-                    <td class="py-3 font-monospace" style="font-size: 0.85rem;">{{ claim.proposal.proposal_number|default:"—" }}</td>
+                    <td class="py-3 font-monospace" style="font-size: 0.85rem;">{{ claim.work_order.proposal.proposal_number|default:"—" }}</td>
+                    <td class="py-3 text-secondary-emphasis" style="font-size: 0.85rem;">{{ claim.work_order.proposal.vendor.name|default:"—" }}</td>
+                    <td class="py-3 text-secondary-emphasis" style="font-size: 0.85rem;">{{ claim.work_order.proposal.location|default:"—" }}</td>
                     <td class="py-3 text-center">
                         <span class="badge {% if claim.approval_status == 'approved' %}bg-success-subtle text-success border border-success-subtle{% elif claim.approval_status == 'rejected' %}bg-danger-subtle text-danger border border-danger-subtle{% else %}bg-warning-subtle text-warning-emphasis border border-warning-subtle{% endif %} px-2.5 py-1.5" style="border-radius: 30px; font-size: 0.72rem;">
                             {{ claim.stage_label }}
@@ -66,9 +137,9 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-5">
+                    <td colspan="9" class="text-center text-muted py-5">
                         <div class="mb-2"><i class="bi bi-cash-stack fs-2 text-muted"></i></div>
-                        <div>No payment claims submitted yet.</div>
+                        <div>No payment claims found matching the filters.</div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -77,4 +148,21 @@
     </div>
 </div>
 {% include '_pagination.html' with item_label='payment claims' %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    flatpickr("#payment_date_range_picker", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "M j, Y",
+        prevArrow: '<span class="bi bi-chevron-left"></span>',
+        nextArrow: '<span class="bi bi-chevron-right"></span>'
+    });
+});
+</script>
 {% endblock %}

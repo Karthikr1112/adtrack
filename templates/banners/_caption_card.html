@@ -14,8 +14,8 @@ Used by banner_detail.html. Expects: file (a FileField value), label (str).
     </a>
     {% endif %}
     <div class="d-flex justify-content-between align-items-center px-2 py-2 border-top" style="background-color: #fff;">
-        <span class="small fw-semibold text-dark">{{ label }}</span>
-        <a href="{{ file.url }}" download class="text-decoration-none d-flex align-items-center gap-1 text-primary small fw-semibold" title="Download">
+        <span class="small fw-semibold text-dark text-truncate me-1" title="{{ label }}">{{ label }}</span>
+        <a href="{{ file.url }}" download class="text-decoration-none d-flex align-items-center gap-1 text-primary small fw-semibold flex-shrink-0" title="Download">
             <i class="bi bi-download"></i>
         </a>
     </div>

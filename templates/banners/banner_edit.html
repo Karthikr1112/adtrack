@@ -68,33 +68,7 @@
                 </div>
             </div>
 
-            <!-- 2. Category, Subcategory & Department -->
-            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
-                <div class="card-header bg-white py-3 border-bottom">
-                    <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-tags-fill me-2"></i>Category &amp; Department</h6>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="{{ form.category.id_for_label }}" class="form-label fw-semibold text-secondary">Category <span class="text-danger">*</span></label>
-                            {{ form.category }}
-                            {% for error in form.category.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="{{ form.subcategory.id_for_label }}" class="form-label fw-semibold text-secondary">Subcategory <span class="text-danger">*</span></label>
-                            {{ form.subcategory }}
-                            {% for error in form.subcategory.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="{{ form.department.id_for_label }}" class="form-label fw-semibold text-secondary">Department <span class="text-danger">*</span></label>
-                            {{ form.department }}
-                            {% for error in form.department.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3. Sizing & Pricing (Multiple Orders) -->
+            <!-- 2. Sizing & Pricing (Multiple Orders) -->
             <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
                 <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div class="d-flex align-items-center gap-2">
@@ -121,10 +95,46 @@
                                 </button>
                             </div>
 
-                            <!-- Line 1: Medium, Dimensions & Measurement -->
+                            <!-- Line 1: Category, Subcategory & Department -->
+                            <div class="row g-2 align-items-end mb-2 pb-1">
+                                <!-- Category -->
+                                <div class="col-md-4 col-sm-12">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Category <span class="text-danger">*</span></label>
+                                    <select name="item_category" class="form-select form-select-sm item-category" required>
+                                        <option value="">Select Category</option>
+                                        {% for cat in categories %}
+                                        <option value="{{ cat.id }}" {% if item.category_id|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <!-- Subcategory -->
+                                <div class="col-md-4 col-sm-12">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Subcategory <span class="text-danger">*</span></label>
+                                    <select name="item_subcategory" class="form-select form-select-sm item-subcategory" required>
+                                        <option value="">Select Subcategory</option>
+                                        {% for sub in subcategories %}
+                                        <option value="{{ sub.id }}" data-category-id="{{ sub.category_id|default:'' }}" {% if item.subcategory_id|stringformat:"s" == sub.id|stringformat:"s" %}selected{% endif %}>{{ sub.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <!-- Department -->
+                                <div class="col-md-4 col-sm-12">
+                                    <label class="form-label small fw-semibold text-secondary mb-1">Department <span class="text-danger">*</span></label>
+                                    <select name="item_department" class="form-select form-select-sm item-department" required>
+                                        <option value="">Select Department</option>
+                                        {% for dept in departments %}
+                                        <option value="{{ dept.id }}" {% if item.department_id|stringformat:"s" == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Line 2: Medium, Dimensions & Measurement -->
                             <div class="row g-2 align-items-end mb-2 pb-1">
                                 <!-- Medium -->
-                                <div class="col-md-4 col-sm-12">
+                                <div class="col-md-3 col-sm-12">
                                     <label class="form-label small fw-semibold text-secondary mb-1">Medium</label>
                                     <select name="item_medium" class="form-select form-select-sm item-medium">
                                         <option value="">Select Medium</option>
@@ -146,9 +156,9 @@
                                     <input type="number" step="0.01" min="0.01" name="item_width" class="form-control form-control-sm item-width" placeholder="W" value="{{ item.width }}" required>
                                 </div>
 
-                                <!-- Square Feet (Auto: H * W) -->
-                                <div class="col-md-2 col-sm-6 col-6">
-                                    <label class="form-label small fw-semibold text-secondary mb-1">Sq. Ft. <span class="text-muted" style="font-size: 0.7rem;">(H × W)</span></label>
+                                <!-- Total Measurement (Auto: H * W) -->
+                                <div class="col-md-3 col-sm-6 col-6">
+                                    <label class="form-label small fw-semibold text-secondary mb-1 text-nowrap">Total Measurement <span class="text-muted" style="font-size: 0.72rem;">(H × W)</span></label>
                                     <input type="text" name="item_square_feet" class="form-control form-control-sm item-sqft bg-white fw-bold text-dark" placeholder="0.00" value="{{ item.square_feet }}" readonly tabindex="-1">
                                 </div>
 
@@ -163,7 +173,7 @@
                                 </div>
                             </div>
 
-                            <!-- Line 2: Quantity, Pricing, Location & Tax -->
+                            <!-- Line 3: Quantity, Pricing, Location & Tax -->
                             <div class="row g-2 align-items-end">
                                 <!-- Quantity -->
                                 <div class="col-md-2 col-sm-4 col-6">
@@ -183,10 +193,17 @@
                                     <input type="number" step="0.01" min="0" name="item_extra_charge" class="form-control form-control-sm item-extra-charge" placeholder="Optional" value="{{ item.extra_charge }}">
                                 </div>
 
-                                <!-- Store Name (Manual typing box placed after Extra column) -->
-                                <div class="col-md-3 col-sm-6 col-12">
-                                    <label class="form-label small fw-semibold text-secondary mb-1">Store Name <span class="text-danger">*</span></label>
-                                    <input type="text" name="item_store_name" class="form-control form-control-sm item-store-name" placeholder="Enter store name" value="{{ item.store_name|default:'' }}" required>
+                                <!-- Stores / Location (Dropdown from Store table + Manual typing for Others) -->
+                                <div class="col-md-3 col-sm-6 col-12 item-store-container">
+                                    <label class="form-label small fw-semibold text-secondary mb-1 text-nowrap">Stores / Location <span class="text-danger">*</span></label>
+                                    <select class="form-select form-select-sm item-store-select mb-1" required>
+                                        <option value="">Select Stores / Location</option>
+                                        {% for st in stores %}
+                                        <option value="{{ st.name }}" {% if item.store_name == st.name %}selected{% endif %}>{{ st.name }}{% if st.code %} ({{ st.code }}){% endif %}</option>
+                                        {% endfor %}
+                                        <option value="__other__">Others (Type Manually)</option>
+                                    </select>
+                                    <input type="text" name="item_store_name" class="form-control form-control-sm item-store-name" placeholder="Enter stores / location" value="{{ item.store_name|default:'' }}" style="display: none;">
                                 </div>
 
                                 <!-- Tax / GST Slab -->
@@ -238,7 +255,7 @@
                 </div>
             </div>
 
-            <!-- 4. Quotation Upload (Captions) -->
+            <!-- 3. Quotation Upload (Captions) -->
             <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
                 <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
                     <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-images me-2"></i>Quotation Upload</h6>
@@ -252,10 +269,8 @@
                                 {% if field_name == 'caption_1' %}Quotation 1 <span class="text-danger">*</span>{% elif field_name == 'caption_2' %}Quotation 2 <span class="text-danger">*</span>{% else %}Quotation 3 <span class="text-muted">(Optional)</span>{% endif %}
                             </label>
                             {% if existing %}
-                            <div class="d-flex align-items-center gap-2 mb-2 p-2 border rounded small bg-light">
-                                <i class="bi bi-paperclip text-primary fs-6"></i>
-                                <span class="text-truncate flex-grow-1 font-monospace" style="font-size: 0.8rem;">{{ existing.name|slice:"-25:" }}</span>
-                                <a href="{{ existing.url }}" download class="btn btn-sm btn-outline-primary py-0 px-1.5" title="Download current file"><i class="bi bi-download"></i></a>
+                            <div class="mb-2" style="max-width: 220px;">
+                                {% include 'banners/_caption_card.html' with file=existing label='Current File' %}
                             </div>
                             {% endif %}
                             {{ field }}
@@ -267,47 +282,7 @@
                 </div>
             </div>
 
-            <!-- 5. Execution Locations (Old Style: Dropdown Store selection + Nearby Image Upload) -->
-            <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
-                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div>
-                        <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-geo-alt-fill me-2"></i>Execution Locations</h6>
-                        <small class="text-muted">Select store from dropdown and upload location photo.</small>
-                    </div>
-                </div>
-                <div class="card-body p-4">
-                    <div class="row align-items-start">
-                        <!-- Store Dropdown -->
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.store.id_for_label }}" class="form-label fw-semibold text-secondary">
-                                Select Store <span class="text-muted small">(Dropdown)</span>
-                            </label>
-                            {{ form.store }}
-                            <div class="form-text">Choose from saved stores (managed in Admin).</div>
-                            {% for error in form.store.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                        </div>
-
-                        <!-- Store / Location Photo Upload (Nearby!) -->
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ form.location_photo.id_for_label }}" class="form-label fw-semibold text-secondary">
-                                Store / Location Image <span class="text-muted small">(Optional)</span>
-                            </label>
-                            {% if location_photo_file %}
-                            <div class="d-flex align-items-center gap-2 mb-2 p-2 border rounded small bg-light">
-                                <i class="bi bi-image text-primary fs-6"></i>
-                                <span class="text-truncate flex-grow-1 font-monospace" style="font-size: 0.8rem;">{{ location_photo_file.name|slice:"-25:" }}</span>
-                                <a href="{{ location_photo_file.url }}" download class="btn btn-sm btn-outline-primary py-0 px-1.5" title="Download current photo"><i class="bi bi-download"></i></a>
-                            </div>
-                            {% endif %}
-                            {{ form.location_photo }}
-                            <div class="form-text">Upload photo of store/placement site (up to 15 MB). {% if location_photo_file %}Upload to replace.{% endif %}</div>
-                            {% for error in form.location_photo.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 6. Final Summary & Supporting Attachment -->
+            <!-- 4. Final Summary & Supporting Attachment -->
             <div class="card shadow-sm border mb-4" style="border-radius: 0.75rem;">
                 <div class="card-header bg-white py-3 border-bottom">
                     <h6 class="card-title mb-0 fw-bold text-primary"><i class="bi bi-clipboard-check me-2"></i>Final Summary</h6>
@@ -327,10 +302,8 @@
                             Supporting Attachment <span class="text-muted">(Optional — Image or PDF)</span>
                         </label>
                         {% if summary_attachment_file %}
-                        <div class="d-flex align-items-center gap-2 mb-2 p-2 border rounded small bg-light" style="max-width: 400px;">
-                            <i class="bi bi-paperclip text-primary fs-6"></i>
-                            <span class="text-truncate flex-grow-1 font-monospace" style="font-size: 0.8rem;">{{ summary_attachment_file.name|slice:"-25:" }}</span>
-                            <a href="{{ summary_attachment_file.url }}" download class="btn btn-sm btn-outline-primary py-0 px-1.5" title="Download current attachment"><i class="bi bi-download"></i></a>
+                        <div class="mb-2" style="max-width: 220px;">
+                            {% include 'banners/_caption_card.html' with file=summary_attachment_file label='Current Attachment' %}
                         </div>
                         {% endif %}
                         {{ form.summary_attachment }}
@@ -366,10 +339,41 @@
             </button>
         </div>
 
-        <!-- Line 1: Medium, Dimensions & Measurement -->
+        <!-- Line 1: Category, Subcategory & Department -->
+        <div class="row g-2 align-items-end mb-2 pb-1">
+            <div class="col-md-4 col-sm-12">
+                <label class="form-label small fw-semibold text-secondary mb-1">Category <span class="text-danger">*</span></label>
+                <select name="item_category" class="form-select form-select-sm item-category" required>
+                    <option value="">Select Category</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 col-sm-12">
+                <label class="form-label small fw-semibold text-secondary mb-1">Subcategory <span class="text-danger">*</span></label>
+                <select name="item_subcategory" class="form-select form-select-sm item-subcategory" required>
+                    <option value="">Select Subcategory</option>
+                    {% for sub in subcategories %}
+                    <option value="{{ sub.id }}" data-category-id="{{ sub.category_id|default:'' }}">{{ sub.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 col-sm-12">
+                <label class="form-label small fw-semibold text-secondary mb-1">Department <span class="text-danger">*</span></label>
+                <select name="item_department" class="form-select form-select-sm item-department" required>
+                    <option value="">Select Department</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept.id }}">{{ dept.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Line 2: Medium, Dimensions & Measurement -->
         <div class="row g-2 align-items-end mb-2 pb-1">
             <!-- Medium -->
-            <div class="col-md-4 col-sm-12">
+            <div class="col-md-3 col-sm-12">
                 <label class="form-label small fw-semibold text-secondary mb-1">Medium</label>
                 <select name="item_medium" class="form-select form-select-sm item-medium">
                     <option value="">Select Medium</option>
@@ -391,9 +395,9 @@
                 <input type="number" step="0.01" min="0.01" name="item_width" class="form-control form-control-sm item-width" placeholder="W" required>
             </div>
 
-            <!-- Square Feet -->
-            <div class="col-md-2 col-sm-6 col-6">
-                <label class="form-label small fw-semibold text-secondary mb-1">Sq. Ft. <span class="text-muted" style="font-size: 0.7rem;">(H × W)</span></label>
+            <!-- Total Measurement -->
+            <div class="col-md-3 col-sm-6 col-6">
+                <label class="form-label small fw-semibold text-secondary mb-1 text-nowrap">Total Measurement <span class="text-muted" style="font-size: 0.72rem;">(H × W)</span></label>
                 <input type="text" name="item_square_feet" class="form-control form-control-sm item-sqft bg-white fw-bold text-dark" placeholder="0.00" readonly tabindex="-1">
             </div>
 
@@ -408,7 +412,7 @@
             </div>
         </div>
 
-        <!-- Line 2: Quantity, Pricing, Location & Tax -->
+        <!-- Line 3: Quantity, Pricing, Location & Tax -->
         <div class="row g-2 align-items-end">
             <!-- Quantity -->
             <div class="col-md-2 col-sm-4 col-6">
@@ -428,10 +432,17 @@
                 <input type="number" step="0.01" min="0" name="item_extra_charge" class="form-control form-control-sm item-extra-charge" placeholder="Optional">
             </div>
 
-            <!-- Store Name (Manual typing box) -->
-            <div class="col-md-3 col-sm-6 col-12">
-                <label class="form-label small fw-semibold text-secondary mb-1">Store Name <span class="text-danger">*</span></label>
-                <input type="text" name="item_store_name" class="form-control form-control-sm item-store-name" placeholder="Enter store name" required>
+            <!-- Stores / Location (Dropdown from Store table + Manual text box for Others) -->
+            <div class="col-md-3 col-sm-6 col-12 item-store-container">
+                <label class="form-label small fw-semibold text-secondary mb-1 text-nowrap">Stores / Location <span class="text-danger">*</span></label>
+                <select class="form-select form-select-sm item-store-select mb-1" required>
+                    <option value="">Select Stores / Location</option>
+                    {% for st in stores %}
+                    <option value="{{ st.name }}">{{ st.name }}{% if st.code %} ({{ st.code }}){% endif %}</option>
+                    {% endfor %}
+                    <option value="__other__">Others (Type Manually)</option>
+                </select>
+                <input type="text" name="item_store_name" class="form-control form-control-sm item-store-name" placeholder="Enter stores / location" style="display: none;">
             </div>
 
             <!-- Tax / GST Slab -->
@@ -497,6 +508,34 @@ document.addEventListener('DOMContentLoaded', function () {
     var taxEl = document.getElementById('summaryTax');
     var grandEl = document.getElementById('summaryGrandTotal');
 
+    var allSubcategories = [
+        {% for sub in subcategories %}
+        { id: "{{ sub.id }}", name: "{{ sub.name|escapejs }}", categoryId: "{{ sub.category_id|default:'' }}" },
+        {% endfor %}
+    ];
+
+    function updateSubcategories(card, preferredSubId) {
+        var catSelect = card.querySelector('.item-category');
+        var subSelect = card.querySelector('.item-subcategory');
+        if (!catSelect || !subSelect) return;
+
+        var catId = catSelect.value;
+        var currentSub = preferredSubId !== undefined ? String(preferredSubId) : subSelect.value;
+
+        subSelect.innerHTML = '<option value="">Select Subcategory</option>';
+        allSubcategories.forEach(function (sub) {
+            if (!catId || !sub.categoryId || String(sub.categoryId) === String(catId)) {
+                var opt = document.createElement('option');
+                opt.value = sub.id;
+                opt.textContent = sub.name;
+                if (String(sub.id) === currentSub) {
+                    opt.selected = true;
+                }
+                subSelect.appendChild(opt);
+            }
+        });
+    }
+
     function formatRupee(n) {
         return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
@@ -527,6 +566,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var hInput = card.querySelector('.item-height');
         var wInput = card.querySelector('.item-width');
         var sqftInput = card.querySelector('.item-sqft');
+        var unitSelect = card.querySelector('.item-size-unit');
         var qtyInput = card.querySelector('.item-quantity');
         var priceInput = card.querySelector('.item-unit-price');
         var extraInput = card.querySelector('.item-extra-charge');
@@ -535,18 +575,37 @@ document.addEventListener('DOMContentLoaded', function () {
         var taxDisplay = card.querySelector('.item-tax-display');
         var totalDisplay = card.querySelector('.item-total-display');
 
+        var isPiece = unitSelect && (unitSelect.value === 'piece' || unitSelect.value === 'pieces');
+
         var h = parseFloat(hInput && hInput.value) || 0;
         var w = parseFloat(wInput && wInput.value) || 0;
         var sqft = h * w;
-        if (sqftInput) sqftInput.value = sqft.toFixed(2);
+        if (sqftInput) {
+            sqftInput.value = sqft.toFixed(2);
+        }
+
+        if (hInput && wInput) {
+            if (isPiece) {
+                hInput.required = false;
+                wInput.required = false;
+                hInput.placeholder = 'Opt';
+                wInput.placeholder = 'Opt';
+            } else {
+                hInput.required = true;
+                wInput.required = true;
+                hInput.placeholder = 'H';
+                wInput.placeholder = 'W';
+            }
+        }
 
         var qtyVal = qtyInput ? qtyInput.value.trim() : '';
         var qty = qtyVal === '' ? 1 : (parseInt(qtyVal, 10) || 0);
         var price = parseFloat(priceInput && priceInput.value) || 0;
         var extra = parseFloat(extraInput && extraInput.value) || 0;
 
-        // Base Amount = (Square Feet × Quantity × Unit Price) + Extra Charge
-        var baseTotal = (sqft * qty * price) + extra;
+        // Base Amount = Piece ? (Quantity × Unit Price) + Extra : (Square Feet × Quantity × Unit Price) + Extra Charge
+        var baseLine = isPiece ? (qty * price) : (sqft * qty * price);
+        var baseTotal = baseLine + extra;
         var taxRate = parseFloat(taxSelect && taxSelect.value) || 0;
         var taxAmt = baseTotal * taxRate;
         var grandTotal = baseTotal + taxAmt;
@@ -579,7 +638,79 @@ document.addEventListener('DOMContentLoaded', function () {
         if (grandEl) grandEl.textContent = formatRupee(grand);
     }
 
+    function bindStoreEvents(card) {
+        var storeSelect = card.querySelector('.item-store-select');
+        var storeInput = card.querySelector('.item-store-name');
+        if (!storeSelect || !storeInput) return;
+
+        storeSelect.addEventListener('change', function () {
+            if (storeSelect.value === '__other__') {
+                storeInput.style.display = 'block';
+                storeInput.required = true;
+                // If it matched a preset store name, clear it so user gets an empty box to type
+                var isPreset = Array.from(storeSelect.options).some(function (opt) {
+                    return opt.value && opt.value !== '__other__' && opt.value === storeInput.value;
+                });
+                if (isPreset || !storeInput.value) {
+                    storeInput.value = '';
+                }
+                storeInput.placeholder = 'Enter stores / location';
+                storeInput.focus();
+            } else if (storeSelect.value) {
+                storeInput.style.display = 'none';
+                storeInput.required = false;
+                storeInput.value = storeSelect.value;
+            } else {
+                storeInput.style.display = 'none';
+                storeInput.required = false;
+                storeInput.value = '';
+            }
+        });
+    }
+
+    function initStoreSelection(card) {
+        var storeSelect = card.querySelector('.item-store-select');
+        var storeInput = card.querySelector('.item-store-name');
+        if (!storeSelect || !storeInput) return;
+
+        var val = (storeInput.value || '').trim();
+        if (val) {
+            var matchingOption = Array.from(storeSelect.options).find(function (opt) {
+                return opt.value === val;
+            });
+            if (matchingOption) {
+                storeSelect.value = val;
+                storeInput.style.display = 'none';
+                storeInput.required = false;
+            } else {
+                storeSelect.value = '__other__';
+                storeInput.style.display = 'block';
+                storeInput.required = true;
+            }
+        } else {
+            if (storeSelect.value && storeSelect.value !== '__other__') {
+                storeInput.value = storeSelect.value;
+                storeInput.style.display = 'none';
+                storeInput.required = false;
+            } else if (storeSelect.value === '__other__') {
+                storeInput.style.display = 'block';
+                storeInput.required = true;
+            } else {
+                storeInput.style.display = 'none';
+                storeInput.required = false;
+            }
+        }
+    }
+
     function bindCardEvents(card) {
+        var catSelect = card.querySelector('.item-category');
+        if (catSelect) {
+            catSelect.addEventListener('change', function () {
+                updateSubcategories(card);
+                recalcAll();
+            });
+        }
+
         var inputs = card.querySelectorAll('input, select');
         inputs.forEach(function (inp) {
             inp.addEventListener('input', recalcAll);
@@ -600,13 +731,59 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function addNewOrder() {
-        var count = ordersContainer.querySelectorAll('.order-item-card').length + 1;
+        var cards = ordersContainer.querySelectorAll('.order-item-card');
+        var lastCard = cards.length > 0 ? cards[cards.length - 1] : null;
+        var lastCat = lastCard ? (lastCard.querySelector('.item-category')?.value || '') : '';
+        var lastSub = lastCard ? (lastCard.querySelector('.item-subcategory')?.value || '') : '';
+        var lastDept = lastCard ? (lastCard.querySelector('.item-department')?.value || '') : '';
+        var lastUnit = lastCard ? (lastCard.querySelector('.item-size-unit')?.value || 'feet') : 'feet';
+        var lastTax = lastCard ? (lastCard.querySelector('.item-tax-rate')?.value || '0.18') : '0.18';
+        var lastStoreSelect = lastCard ? (lastCard.querySelector('.item-store-select')?.value || '') : '';
+        var lastStoreInput = lastCard ? (lastCard.querySelector('.item-store-name')?.value || '') : '';
+
+        var count = cards.length + 1;
         var html = template.innerHTML.replace(/__IDX__/g, count).replace(/__NUM__/g, count);
         var tempDiv = document.createElement('div');
         tempDiv.innerHTML = html.trim();
         var newCard = tempDiv.firstElementChild;
         ordersContainer.appendChild(newCard);
+
+        if (lastCat) {
+            var newCat = newCard.querySelector('.item-category');
+            if (newCat) newCat.value = lastCat;
+        }
+        updateSubcategories(newCard, lastSub);
+        if (lastDept) {
+            var newDept = newCard.querySelector('.item-department');
+            if (newDept) newDept.value = lastDept;
+        }
+        if (lastUnit) {
+            var newUnit = newCard.querySelector('.item-size-unit');
+            if (newUnit) newUnit.value = lastUnit;
+        }
+        if (lastTax) {
+            var newTax = newCard.querySelector('.item-tax-rate');
+            if (newTax) newTax.value = lastTax;
+        }
+        if (lastStoreSelect) {
+            var newStoreSelect = newCard.querySelector('.item-store-select');
+            var newStoreInput = newCard.querySelector('.item-store-name');
+            if (newStoreSelect && newStoreInput) {
+                newStoreSelect.value = lastStoreSelect;
+                if (lastStoreSelect === '__other__') {
+                    newStoreInput.value = lastStoreInput;
+                    newStoreInput.style.display = 'block';
+                    newStoreInput.required = true;
+                } else {
+                    newStoreInput.value = lastStoreSelect;
+                    newStoreInput.style.display = 'none';
+                    newStoreInput.required = false;
+                }
+            }
+        }
+
         bindCardEvents(newCard);
+        bindStoreEvents(newCard);
         reindexOrders();
         recalcAll();
     }
@@ -614,24 +791,43 @@ document.addEventListener('DOMContentLoaded', function () {
     if (addOrderBtn) addOrderBtn.addEventListener('click', addNewOrder);
     if (addOrderBtnTop) addOrderBtnTop.addEventListener('click', addNewOrder);
 
-    ordersContainer.querySelectorAll('.order-item-card').forEach(bindCardEvents);
+    // Form submission validation for store selections
+    form.addEventListener('submit', function (e) {
+        var cards = ordersContainer.querySelectorAll('.order-item-card');
+        for (var i = 0; i < cards.length; i++) {
+            var card = cards[i];
+            var storeSelect = card.querySelector('.item-store-select');
+            var storeInput = card.querySelector('.item-store-name');
+            if (storeSelect && storeInput) {
+                if (storeSelect.value === '__other__') {
+                    if (!storeInput.value.trim()) {
+                        e.preventDefault();
+                        storeInput.focus();
+                        alert('Please enter Stores / Location for Order #' + (i + 1));
+                        return false;
+                    }
+                } else if (storeSelect.value) {
+                    storeInput.value = storeSelect.value;
+                } else {
+                    e.preventDefault();
+                    storeSelect.focus();
+                    alert('Please select Stores / Location for Order #' + (i + 1));
+                    return false;
+                }
+            }
+        }
+    });
+
+    ordersContainer.querySelectorAll('.order-item-card').forEach(function (card) {
+        var currentSub = card.querySelector('.item-subcategory')?.value;
+        updateSubcategories(card, currentSub);
+        bindCardEvents(card);
+        bindStoreEvents(card);
+        initStoreSelection(card);
+    });
     reindexOrders();
     recalcAll();
 
-    // Auto-fill Store Name in Sizing & Pricing when Store Dropdown in Execution Locations is selected
-    var storeSelect = form.querySelector('#{{ form.store.id_for_label }}');
-    if (storeSelect) {
-        storeSelect.addEventListener('change', function () {
-            var opt = storeSelect.options[storeSelect.selectedIndex];
-            if (opt && opt.value) {
-                var text = opt.textContent.replace(/\s*\([^)]*\)$/, '').trim();
-                var firstStoreInput = ordersContainer.querySelector('.item-store-name');
-                if (firstStoreInput && !firstStoreInput.value.trim()) {
-                    firstStoreInput.value = text;
-                }
-            }
-        });
-    }
 });
 </script>
 {% endblock %}

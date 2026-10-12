@@ -40,22 +40,11 @@ proposal_review.html so both pages show identical details. Expects: banner.
             <div class="col-12">
                 <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Execution Locations / Stores</div>
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    {% if banner.store %}
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1.5 d-inline-flex align-items-center gap-1" style="font-size: 0.8rem; border-radius: 0.375rem;">
-                        <i class="bi bi-shop me-1"></i> {{ banner.store.name }}{% if banner.store.code %} ({{ banner.store.code }}){% endif %}
-                    </span>
-                    {% endif %}
                     {% if banner.location %}
                     <span class="badge bg-light text-dark border px-2.5 py-1.5 d-inline-flex align-items-center gap-1" style="font-size: 0.8rem; border-radius: 0.375rem;">
                         <i class="bi bi-geo-alt-fill text-danger me-1"></i> {{ banner.location }}
                     </span>
-                    {% endif %}
-                    {% if banner.location_photo %}
-                    <a href="{{ banner.location_photo.url }}" target="_blank" class="btn btn-xs btn-outline-primary py-1 px-2 d-inline-flex align-items-center gap-1" style="font-size: 0.75rem; border-radius: 0.375rem;">
-                        <i class="bi bi-image me-1"></i> View Store Photo
-                    </a>
-                    {% endif %}
-                    {% if not banner.store and not banner.location %}
+                    {% else %}
                     <span class="text-dark fw-semibold">—</span>
                     {% endif %}
                 </div>
@@ -72,10 +61,13 @@ proposal_review.html so both pages show identical details. Expects: banner.
                         <thead class="table-light text-secondary">
                             <tr>
                                 <th class="ps-3 py-2">#</th>
-                                <th class="py-2">Store Name</th>
+                                <th class="py-2">Stores / Location</th>
+                                <th class="py-2">Category</th>
+                                <th class="py-2">Subcategory</th>
+                                <th class="py-2">Department</th>
                                 <th class="py-2">Medium</th>
                                 <th class="py-2">Dimensions (H × W)</th>
-                                <th class="py-2">Sq. Ft.</th>
+                                <th class="py-2">Total Measurement</th>
                                 <th class="py-2 text-center">Qty</th>
                                 <th class="py-2">Rate (₹)</th>
                                 <th class="py-2">Extra (₹)</th>
@@ -88,9 +80,12 @@ proposal_review.html so both pages show identical details. Expects: banner.
                             <tr>
                                 <td class="ps-3 fw-bold text-secondary">Order #{{ item.item_number }}</td>
                                 <td><span class="fw-semibold text-dark"><i class="bi bi-geo-alt text-danger me-1"></i>{{ item.store_name|default:banner.location|default:"—" }}</span></td>
+                                <td><span class="badge bg-light text-dark border">{{ item.category.name|default:banner.category.name|default:"—" }}</span></td>
+                                <td><span class="badge bg-light text-dark border">{{ item.subcategory.name|default:banner.subcategory.name|default:"—" }}</span></td>
+                                <td><span class="badge bg-light text-dark border">{{ item.department.name|default:banner.department.name|default:"—" }}</span></td>
                                 <td><span class="badge bg-light text-dark border">{{ item.medium.name|default:"—" }}</span></td>
-                                <td>{{ item.height }} × {{ item.width }} {{ item.get_size_unit_display }}</td>
-                                <td class="fw-semibold text-dark">{{ item.square_feet|floatformat:2 }}</td>
+                                <td>{% if item.size_unit == 'piece' and not item.height and not item.width %}Per Piece{% else %}{{ item.height }} × {{ item.width }} {{ item.get_size_unit_display }}{% endif %}</td>
+                                <td class="fw-semibold text-dark">{% if item.size_unit == 'piece' and not item.square_feet %}—{% else %}{{ item.square_feet|floatformat:2 }}{% endif %}</td>
                                 <td class="text-center">{{ item.quantity }}</td>
                                 <td>₹{{ item.unit_price|floatformat:2 }}</td>
                                 <td>{% if item.extra_charge %}₹{{ item.extra_charge|floatformat:2 }}{% else %}—{% endif %}</td>
@@ -101,6 +96,9 @@ proposal_review.html so both pages show identical details. Expects: banner.
                             <tr>
                                 <td class="ps-3 fw-bold text-secondary">Order #1</td>
                                 <td><span class="fw-semibold text-dark">{{ banner.location|default:"—" }}</span></td>
+                                <td><span class="badge bg-light text-dark border">{{ banner.category.name|default:"—" }}</span></td>
+                                <td><span class="badge bg-light text-dark border">{{ banner.subcategory.name|default:"—" }}</span></td>
+                                <td><span class="badge bg-light text-dark border">{{ banner.department.name|default:"—" }}</span></td>
                                 <td>—</td>
                                 <td>{{ banner.size|default:"—" }} {{ banner.get_size_unit_display }}</td>
                                 <td>—</td>
@@ -124,13 +122,11 @@ proposal_review.html so both pages show identical details. Expects: banner.
 
             {% if banner.summary_attachment %}
             <div class="col-12">
-                <div class="text-muted small fw-semibold mb-1 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Supporting Attachment</div>
-                <div class="d-inline-flex align-items-center gap-2 p-2 border rounded-2 bg-light" style="max-width: 400px;">
-                    <i class="bi bi-paperclip text-primary fs-5"></i>
-                    <span class="text-truncate flex-grow-1 small font-monospace">{{ banner.summary_attachment.name|slice:"-30:" }}</span>
-                    <a href="{{ banner.summary_attachment.url }}" download class="btn btn-sm btn-outline-primary py-0.5 px-2" title="Download attachment">
-                        <i class="bi bi-download me-1"></i>Download
-                    </a>
+                <div class="row g-3">
+                    <div class="col-md-4 col-sm-6">
+                        <div class="text-muted small fw-semibold mb-2 text-uppercase" style="letter-spacing: 0.5px; font-size: 0.7rem;">Supporting Attachment</div>
+                        {% include 'banners/_caption_card.html' with file=banner.summary_attachment label='Supporting Attachment' %}
+                    </div>
                 </div>
             </div>
             {% endif %}

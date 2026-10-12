@@ -2,12 +2,86 @@
 {% block title %}Work Orders · AdTrack{% endblock %}
 {% block page_title %}Work Orders{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+{% endblock %}
+
 {% block content %}
-<div class="mb-4">
+<!-- Header Row -->
+<div class="mb-4 page-header-row">
     <h4 class="mb-1 text-dark fw-bold">Work Orders</h4>
     <p class="text-muted small mb-0">Purchase Orders generated automatically once a proposal receives final CEO approval.</p>
 </div>
 
+<!-- Filters Card -->
+<div class="card border shadow-sm mb-4" style="border-radius: 0.75rem; background-color: #ffffff;">
+    <div class="card-body p-3">
+        <form method="get" class="row gy-3 gx-2 align-items-end">
+            <!-- Search -->
+            <div class="col-12 col-md-3">
+                <label class="form-label small fw-semibold text-secondary mb-1">Search</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm border-start-0" placeholder="PO #, Proposal #, Location..." style="background-color: #fafbfc;">
+                </div>
+            </div>
+
+            <!-- Date Range -->
+            <div class="col-6 col-md-3">
+                <label class="form-label small fw-semibold text-secondary mb-1">Generated Date</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-calendar3"></i></span>
+                    <input type="text" name="date_range" id="wo_date_range_picker" value="{{ request.GET.date_range }}" class="form-control form-control-sm border-start-0" placeholder="Select Date Range" style="background-color: #fafbfc;">
+                </div>
+            </div>
+
+            <!-- Campaign -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-secondary mb-1">Campaign</label>
+                <select name="campaign" class="form-select form-select-sm" style="background-color: #fafbfc;">
+                    <option value="">All Campaigns</option>
+                    {% for c in campaign_choices %}
+                    <option value="{{ c.id }}" {% if request.GET.campaign == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Vendor -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-secondary mb-1">Vendor</label>
+                <select name="vendor" class="form-select form-select-sm" style="background-color: #fafbfc;">
+                    <option value="">All Vendors</option>
+                    {% for v in vendor_choices %}
+                    <option value="{{ v.id }}" {% if request.GET.vendor == v.id|stringformat:"s" %}selected{% endif %}>{{ v.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Sort By -->
+            <div class="col-6 col-md-1">
+                <label class="form-label small fw-semibold text-secondary mb-1">Sort By</label>
+                <select name="sort" class="form-select form-select-sm" style="background-color: #fafbfc;">
+                    <option value="-created_at" {% if request.GET.sort == '-created_at' or not request.GET.sort %}selected{% endif %}>Newest</option>
+                    <option value="created_at" {% if request.GET.sort == 'created_at' %}selected{% endif %}>Oldest</option>
+                    <option value="po_number" {% if request.GET.sort == 'po_number' %}selected{% endif %}>PO #</option>
+                    <option value="-grand_total" {% if request.GET.sort == '-grand_total' %}selected{% endif %}>Amount</option>
+                </select>
+            </div>
+
+            <!-- Buttons -->
+            <div class="col-6 col-md-1 d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100 shadow-sm" title="Apply filters">
+                    <i class="bi bi-funnel"></i>
+                </button>
+                <a href="{% url 'work_order_list' %}" class="btn btn-outline-secondary btn-sm" title="Reset filters">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Table Card -->
 <div class="card border shadow-sm" style="border-radius: 0.75rem; background-color: #ffffff;">
     <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
         <span class="fw-bold text-dark fs-6"><i class="bi bi-file-earmark-text me-2 text-primary"></i>All Work Orders</span>
@@ -19,7 +93,8 @@
                     <th class="ps-4 py-3 text-start">PO Number</th>
                     <th class="py-3 text-start">Proposal #</th>
                     <th class="py-3 text-start">Campaign</th>
-                    <th class="py-3 text-center">Vendor</th>
+                    <th class="py-3 text-start">Vendor</th>
+                    <th class="py-3 text-start">Stores / Location</th>
                     <th class="py-3 text-center">Grand Total</th>
                     <th class="py-3 text-center">Generated On</th>
                     <th class="pe-4 py-3 text-end">Action</th>
@@ -33,7 +108,8 @@
                         <a href="{% url 'banner_detail' order.proposal_id %}" class="text-decoration-none fw-semibold text-dark font-monospace" style="font-size: 0.85rem;">{{ order.proposal.proposal_number }}</a>
                     </td>
                     <td class="py-3 fw-semibold text-dark">{{ order.proposal.campaign.name|default:"—" }}</td>
-                    <td class="py-3 text-center">{{ order.proposal.vendor.name|default:"—" }}</td>
+                    <td class="py-3 text-secondary-emphasis" style="font-size: 0.85rem;">{{ order.proposal.vendor.name|default:"—" }}</td>
+                    <td class="py-3 text-secondary-emphasis" style="font-size: 0.85rem;">{{ order.proposal.location|default:"—" }}</td>
                     <td class="py-3 text-center fw-semibold">₹{{ order.proposal.grand_total|floatformat:2 }}</td>
                     <td class="py-3 text-center">{{ order.created_at|date:"d M Y, H:i" }}</td>
                     <td class="pe-4 py-3 text-end">
@@ -49,10 +125,10 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-5">
+                    <td colspan="8" class="text-center text-muted py-5">
                         <div class="mb-2"><i class="bi bi-file-earmark-x fs-2 text-muted"></i></div>
-                        <div>No work orders generated yet.</div>
-                        <div class="small">A Work Order is created automatically once a proposal is fully approved by the CEO.</div>
+                        <div>No work orders found matching the filters.</div>
+                        <div class="small text-muted mt-1">A Work Order is created automatically once a proposal is fully approved by the CEO.</div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -61,4 +137,20 @@
     </div>
 </div>
 {% include '_pagination.html' with item_label='work orders' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    flatpickr("#wo_date_range_picker", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "M j, Y",
+        prevArrow: '<span class="bi bi-chevron-left"></span>',
+        nextArrow: '<span class="bi bi-chevron-right"></span>'
+    });
+});
+</script>
 {% endblock %}

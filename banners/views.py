@@ -47,7 +47,9 @@ def _logo_data_uri():
 
 
 def _detail_queryset():
-    return Proposal.objects.select_related('created_by', 'campaign', 'vendor', 'category', 'subcategory', 'department', 'current_step__role')
+    return Proposal.objects.select_related(
+        'created_by', 'campaign', 'vendor', 'category', 'subcategory', 'department', 'current_step__role'
+    ).prefetch_related('items__category', 'items__subcategory', 'items__department', 'items__medium')
 
 
 def _design_file_attachment(banner):
@@ -59,6 +61,18 @@ def _design_file_attachment(banner):
         workflow_step__require_attachment_on_approve=True, action='approve',
     ).exclude(attachment='').order_by('-created_at').first()
     return action.attachment if action else None
+
+
+def _parse_date(value):
+    """Parses a YYYY-MM-DD string from date inputs; returns None for anything
+    malformed so a bad querystring can never crash the query."""
+    from datetime import datetime
+    if not value:
+        return None
+    try:
+        return datetime.strptime(str(value).strip(), '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return None
 
 
 def _filtered_banners(request):
@@ -95,7 +109,40 @@ def _filtered_banners(request):
 
     search = request.GET.get('q', '').strip()
     if search:
-        queryset = queryset.filter(location__icontains=search)
+        queryset = queryset.filter(
+            Q(location__icontains=search) |
+            Q(proposal_number__icontains=search) |
+            Q(campaign__name__icontains=search) |
+            Q(vendor__name__icontains=search)
+        )
+
+    # Date filter: date_range ("2026-10-01 to 2026-10-10" or single date) or date_from / date_to
+    date_range = request.GET.get('date_range', '').strip()
+    if date_range:
+        parts = date_range.split(' to ')
+        if len(parts) == 2:
+            d_start = _parse_date(parts[0])
+            d_end = _parse_date(parts[1])
+            if d_start:
+                queryset = queryset.filter(created_at__date__gte=d_start)
+            if d_end:
+                queryset = queryset.filter(created_at__date__lte=d_end)
+        elif len(parts) == 1:
+            d_start = _parse_date(parts[0])
+            if d_start:
+                queryset = queryset.filter(created_at__date=d_start)
+
+    date_from = request.GET.get('date_from', '').strip()
+    if date_from:
+        d_from = _parse_date(date_from)
+        if d_from:
+            queryset = queryset.filter(created_at__date__gte=d_from)
+
+    date_to = request.GET.get('date_to', '').strip()
+    if date_to:
+        d_to = _parse_date(date_to)
+        if d_to:
+            queryset = queryset.filter(created_at__date__lte=d_to)
 
     sort = request.GET.get('sort', '-created_at')
     if sort not in ('-created_at', 'created_at', 'location', '-location', '-grand_total', 'grand_total'):
@@ -145,6 +192,9 @@ class BannerDetailView(LoginRequiredMixin, DetailView):
 
 
 def _extract_submitted_items(post_data):
+    category_ids = post_data.getlist('item_category')
+    subcategory_ids = post_data.getlist('item_subcategory')
+    department_ids = post_data.getlist('item_department')
     store_names = post_data.getlist('item_store_name')
     heights = post_data.getlist('item_height')
     widths = post_data.getlist('item_width')
@@ -154,9 +204,12 @@ def _extract_submitted_items(post_data):
     unit_prices = post_data.getlist('item_unit_price')
     extra_charges = post_data.getlist('item_extra_charge')
     tax_rates = post_data.getlist('item_tax_rate')
-    num_items = max(len(heights), len(widths), len(store_names), len(tax_rates), 1)
+    num_items = max(len(heights), len(widths), len(store_names), len(category_ids), len(subcategory_ids), len(department_ids), len(tax_rates), 1)
     items = []
     for i in range(num_items):
+        cat_id = category_ids[i] if i < len(category_ids) else ''
+        subcat_id = subcategory_ids[i] if i < len(subcategory_ids) else ''
+        dept_id = department_ids[i] if i < len(department_ids) else ''
         s_name = store_names[i] if i < len(store_names) else ''
         h = heights[i] if i < len(heights) else ''
         w = widths[i] if i < len(widths) else ''
@@ -183,6 +236,9 @@ def _extract_submitted_items(post_data):
             grand_total_str = '0.00'
         items.append({
             'item_number': i + 1,
+            'category_id': int(cat_id) if cat_id and str(cat_id).isdigit() else '',
+            'subcategory_id': int(subcat_id) if subcat_id and str(subcat_id).isdigit() else '',
+            'department_id': int(dept_id) if dept_id and str(dept_id).isdigit() else '',
             'store_name': s_name,
             'medium_id': int(m) if m and str(m).isdigit() else '',
             'height': h,
@@ -216,6 +272,9 @@ class BannerCreateView(LoginRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['next_proposal_number'] = Proposal.next_proposal_number_preview()
+        context['categories'] = Category.objects.all()
+        context['subcategories'] = Subcategory.objects.select_related('category').all()
+        context['departments'] = Department.objects.all()
         context['mediums'] = Medium.objects.all()
         context['stores'] = Store.objects.all()
         context['size_units'] = Proposal.SIZE_UNIT_CHOICES
@@ -225,6 +284,9 @@ class BannerCreateView(LoginRequiredMixin, CreateView):
         else:
             context['items'] = [{
                 'item_number': 1,
+                'category_id': '',
+                'subcategory_id': '',
+                'department_id': '',
                 'store_name': '',
                 'medium_id': '',
                 'height': '',
@@ -583,10 +645,13 @@ def banner_edit(request, pk):
         items = _extract_submitted_items(request.POST)
     else:
         form = BannerForm(instance=banner)
-        banner_items = banner.items.all()
+        banner_items = banner.items.select_related('category', 'subcategory', 'department', 'medium').all()
         if banner_items.exists():
             items = [{
                 'item_number': it.item_number,
+                'category_id': it.category_id or banner.category_id or '',
+                'subcategory_id': it.subcategory_id or banner.subcategory_id or '',
+                'department_id': it.department_id or banner.department_id or '',
                 'store_name': it.store_name or banner.location or '',
                 'medium_id': it.medium_id or '',
                 'height': it.height,
@@ -604,6 +669,9 @@ def banner_edit(request, pk):
         else:
             items = [{
                 'item_number': 1,
+                'category_id': banner.category_id or '',
+                'subcategory_id': banner.subcategory_id or '',
+                'department_id': banner.department_id or '',
                 'store_name': banner.location or '',
                 'medium_id': '',
                 'height': banner.size.split('x')[0].strip() if 'x' in str(banner.size) else '10',
@@ -627,16 +695,17 @@ def banner_edit(request, pk):
         for name in ('caption_1', 'caption_2', 'caption_3')
     ]
     summary_attachment_file = banner.summary_attachment if banner.summary_attachment else None
-    location_photo_file = banner.location_photo if banner.location_photo else None
 
     return render(request, 'banners/banner_edit.html', {
         'form': form,
         'banner': banner,
         'captions': captions,
         'summary_attachment_file': summary_attachment_file,
-        'location_photo_file': location_photo_file,
         'needs_rework': needs_rework,
         'rework_note': banner.approval_history.filter(action='rework').order_by('-created_at').first() if needs_rework else None,
+        'categories': Category.objects.all(),
+        'subcategories': Subcategory.objects.select_related('category').all(),
+        'departments': Department.objects.all(),
         'mediums': Medium.objects.all(),
         'stores': Store.objects.all(),
         'size_units': Proposal.SIZE_UNIT_CHOICES,
@@ -922,7 +991,73 @@ def _work_order_queryset():
     return WorkOrder.objects.select_related(
         'proposal', 'proposal__campaign', 'proposal__vendor',
         'proposal__category', 'proposal__subcategory', 'proposal__department', 'proposal__created_by',
+    ).prefetch_related(
+        'proposal__items__category', 'proposal__items__subcategory', 'proposal__items__department', 'proposal__items__medium'
     )
+
+
+def _filtered_work_orders(request):
+    orders = _work_order_queryset()
+    if is_personal_view(request.user):
+        orders = orders.filter(proposal__created_by=request.user)
+
+    search = request.GET.get('q', '').strip()
+    if search:
+        orders = orders.filter(
+            Q(po_number__icontains=search) |
+            Q(proposal__proposal_number__icontains=search) |
+            Q(proposal__campaign__name__icontains=search) |
+            Q(proposal__vendor__name__icontains=search) |
+            Q(proposal__location__icontains=search) |
+            Q(proposal__department__name__icontains=search)
+        )
+
+    campaign_id = request.GET.get('campaign', '').strip()
+    if campaign_id:
+        orders = orders.filter(proposal__campaign_id=campaign_id)
+
+    vendor_id = request.GET.get('vendor', '').strip()
+    if vendor_id:
+        orders = orders.filter(proposal__vendor_id=vendor_id)
+
+    date_range = request.GET.get('date_range', '').strip()
+    if date_range:
+        parts = date_range.split(' to ')
+        if len(parts) == 2:
+            d_start = _parse_date(parts[0])
+            d_end = _parse_date(parts[1])
+            if d_start:
+                orders = orders.filter(created_at__date__gte=d_start)
+            if d_end:
+                orders = orders.filter(created_at__date__lte=d_end)
+        elif len(parts) == 1:
+            d_start = _parse_date(parts[0])
+            if d_start:
+                orders = orders.filter(created_at__date=d_start)
+
+    date_from = request.GET.get('date_from', '').strip()
+    if date_from:
+        d_from = _parse_date(date_from)
+        if d_from:
+            orders = orders.filter(created_at__date__gte=d_from)
+
+    date_to = request.GET.get('date_to', '').strip()
+    if date_to:
+        d_to = _parse_date(date_to)
+        if d_to:
+            orders = orders.filter(created_at__date__lte=d_to)
+
+    sort = request.GET.get('sort', '-created_at').strip()
+    if sort == 'created_at':
+        orders = orders.order_by('created_at')
+    elif sort == 'po_number':
+        orders = orders.order_by('po_number')
+    elif sort == '-grand_total':
+        orders = orders.order_by('-proposal__grand_total')
+    else:
+        orders = orders.order_by('-created_at')
+
+    return orders
 
 
 @role_required('can_view_banners')
@@ -933,11 +1068,18 @@ def work_order_list(request):
     Executive only sees Work Orders for proposals they created
     themselves; anyone with broader responsibility (reviewer/admin/
     superuser) sees every Work Order, org-wide."""
-    orders = _work_order_queryset().order_by('-created_at')
-    if is_personal_view(request.user):
-        orders = orders.filter(proposal__created_by=request.user)
+    orders = _filtered_work_orders(request)
+    querydict = request.GET.copy()
+    querydict.pop('page', None)
+    querystring = querydict.urlencode()
     page_obj = Paginator(orders, 25).get_page(request.GET.get('page'))
-    return render(request, 'banners/work_order_list.html', {'orders': page_obj, 'page_obj': page_obj})
+    return render(request, 'banners/work_order_list.html', {
+        'orders': page_obj,
+        'page_obj': page_obj,
+        'campaign_choices': Campaign.objects.all(),
+        'vendor_choices': Vendor.objects.all(),
+        'querystring': querystring,
+    })
 
 
 @role_required('can_view_banners')

@@ -2,6 +2,10 @@
 {% load banner_extras %}
 {% block title %}Proposals · AdTrack{% endblock %}
 {% block page_title %}Proposals{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+{% endblock %}
 {% block content %}
 
 <!-- Header & Action Row -->
@@ -30,7 +34,14 @@
                 <label class="form-label small fw-semibold text-secondary mb-1">Search</label>
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
-                    <input type="text" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm border-start-0" placeholder="Location..." style="background-color: #fafbfc;">
+                    <input type="text" name="q" value="{{ request.GET.q }}" class="form-control form-control-sm border-start-0" placeholder="Search..." style="background-color: #fafbfc;">
+                </div>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold text-secondary mb-1">Date Range</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-calendar3"></i></span>
+                    <input type="text" name="date_range" id="banner_date_range_picker" value="{{ request.GET.date_range }}" class="form-control form-control-sm border-start-0" placeholder="Select Date Range" style="background-color: #fafbfc;">
                 </div>
             </div>
             <div class="col-6 col-md-2">
@@ -60,18 +71,18 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-6 col-md-2">
+            <div class="col-6 col-md-1">
                 <label class="form-label small fw-semibold text-secondary mb-1">Sort By</label>
                 <select name="sort" class="form-select form-select-sm" style="background-color: #fafbfc;">
-                    <option value="-created_at" {% if request.GET.sort == '-created_at' or not request.GET.sort %}selected{% endif %}>Newest First</option>
-                    <option value="created_at" {% if request.GET.sort == 'created_at' %}selected{% endif %}>Oldest First</option>
-                    <option value="-grand_total" {% if request.GET.sort == '-grand_total' %}selected{% endif %}>Grand Total (High-Low)</option>
-                    <option value="location" {% if request.GET.sort == 'location' %}selected{% endif %}>Location (A–Z)</option>
+                    <option value="-created_at" {% if request.GET.sort == '-created_at' or not request.GET.sort %}selected{% endif %}>Newest</option>
+                    <option value="created_at" {% if request.GET.sort == 'created_at' %}selected{% endif %}>Oldest</option>
+                    <option value="-grand_total" {% if request.GET.sort == '-grand_total' %}selected{% endif %}>Amount</option>
+                    <option value="location" {% if request.GET.sort == 'location' %}selected{% endif %}>Location</option>
                 </select>
             </div>
-            <div class="col-12 col-md-2 d-flex gap-2">
-                <button type="submit" class="btn btn-primary btn-sm flex-grow-1 shadow-sm">
-                    <i class="bi bi-funnel me-1"></i>Filter
+            <div class="col-6 col-md-1 d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100 shadow-sm" title="Apply filters">
+                    <i class="bi bi-funnel"></i>
                 </button>
                 <a href="{% url 'banner_list' %}" class="btn btn-outline-secondary btn-sm" title="Reset filters">
                     <i class="bi bi-arrow-counterclockwise"></i>
@@ -154,4 +165,20 @@
 <!-- Pagination Controls -->
 {% include '_pagination.html' with item_label='proposals' %}
 
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    flatpickr("#banner_date_range_picker", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "M j, Y",
+        prevArrow: '<span class="bi bi-chevron-left"></span>',
+        nextArrow: '<span class="bi bi-chevron-right"></span>'
+    });
+});
+</script>
 {% endblock %}

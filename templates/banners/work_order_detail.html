@@ -180,10 +180,11 @@
         {% if banner.items.all %}
         <tr>
             <th>Order #</th>
-            <th>Store Name</th>
+            <th>Stores / Location</th>
+            <th>Category / Dept</th>
             <th>Medium</th>
             <th>Dimensions (H × W)</th>
-            <th>Sq. Ft.</th>
+            <th>Total Measurement</th>
             <th>Qty</th>
             <th>Rate (₹)</th>
             <th>Tax (GST)</th>
@@ -193,9 +194,14 @@
         <tr>
             <td>Order #{{ item.item_number }}</td>
             <td>{{ item.store_name|default:banner.location|default:"—" }}</td>
+            <td>
+                <div>{{ item.category.name|default:banner.category.name|default:"—" }}</div>
+                {% if item.subcategory %}<small class="text-muted">{{ item.subcategory.name }} · </small>{% endif %}
+                <small class="text-muted">{{ item.department.name|default:banner.department.name|default:"—" }}</small>
+            </td>
             <td>{{ item.medium.name|default:"—" }}</td>
-            <td>{{ item.height }} × {{ item.width }} {{ item.get_size_unit_display }}</td>
-            <td>{{ item.square_feet|floatformat:2 }}</td>
+            <td>{% if item.size_unit == 'piece' and not item.height and not item.width %}Per Piece{% else %}{{ item.height }} × {{ item.width }} {{ item.get_size_unit_display }}{% endif %}</td>
+            <td>{% if item.size_unit == 'piece' and not item.square_feet %}—{% else %}{{ item.square_feet|floatformat:2 }}{% endif %}</td>
             <td>{{ item.quantity }}</td>
             <td>₹{{ item.unit_price|floatformat:2 }}</td>
             <td>{{ item.tax_percentage_display }} (₹{{ item.tax_amount|floatformat:2 }})</td>

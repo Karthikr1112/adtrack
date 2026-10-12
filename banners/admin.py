@@ -13,8 +13,8 @@ class CampaignAdmin(admin.ModelAdmin):
 
 @admin.register(Vendor)
 class VendorAdmin(admin.ModelAdmin):
-    list_display = ('name',)
-    search_fields = ('name',)
+    list_display = ('name', 'contact_no', 'email', 'gst_no')
+    search_fields = ('name', 'email', 'contact_no', 'gst_no', 'address')
 
 
 @admin.register(Category)
@@ -51,7 +51,7 @@ class StoreAdmin(admin.ModelAdmin):
 class ProposalItemInline(admin.TabularInline):
     model = ProposalItem
     extra = 0
-    fields = ('item_number', 'store_name', 'medium', 'height', 'width', 'square_feet', 'size_unit', 'quantity', 'unit_price', 'extra_charge', 'tax_rate', 'tax_amount', 'total_amount', 'grand_total')
+    fields = ('item_number', 'category', 'subcategory', 'department', 'store_name', 'medium', 'height', 'width', 'square_feet', 'size_unit', 'quantity', 'unit_price', 'extra_charge', 'tax_rate', 'tax_amount', 'total_amount', 'grand_total')
     readonly_fields = ('square_feet', 'tax_amount', 'total_amount', 'grand_total')
 
 
@@ -68,7 +68,6 @@ class ProposalAdmin(admin.ModelAdmin):
     list_filter = ('approval_status', 'category', 'department', 'campaign', 'vendor')
     search_fields = ('proposal_number', 'location', 'campaign__name')
     readonly_fields = ('proposal_number', 'total_amount', 'tax_amount', 'grand_total')
-    filter_horizontal = ('stores',)
     inlines = [ProposalItemInline, ApprovalActionInline]
 
 

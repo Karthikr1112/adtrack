@@ -1,9 +1,16 @@
+from io import BytesIO
+from datetime import datetime
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
-from django.http import Http404
+from django.http import HttpResponse, Http404
+from django.db.models import Q
 
 from accounts.decorators import role_required
 from accounts.permissions import reviewable_stages, can_edit_record, is_personal_view
@@ -12,12 +19,85 @@ from .models import PaymentClaim
 from .forms import PaymentClaimForm
 from . import workflow
 
+APPROVAL_FILL_COLORS = {
+    'in_review': 'FFF3CD',
+    'rework': 'CFE2FF',
+    'approved': 'D1E7DD',
+    'rejected': 'F8D7DA',
+}
+
+
+def _parse_date(value):
+    if not value:
+        return None
+    try:
+        return datetime.strptime(str(value).strip(), '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return None
+
 
 def _detail_queryset():
     return PaymentClaim.objects.select_related(
         'created_by', 'work_order', 'work_order__proposal', 'work_order__proposal__campaign',
-        'work_order__proposal__vendor', 'work_order__proposal__category', 'current_step__role',
+        'work_order__proposal__vendor', 'work_order__proposal__category', 'work_order__proposal__department',
+        'current_step__role',
     )
+
+
+def _filtered_payments(request):
+    claims = _detail_queryset()
+    if is_personal_view(request.user):
+        claims = claims.filter(created_by=request.user)
+
+    search = request.GET.get('q', '').strip()
+    if search:
+        claims = claims.filter(
+            Q(payment_number__icontains=search) |
+            Q(work_order__po_number__icontains=search) |
+            Q(work_order__proposal__proposal_number__icontains=search) |
+            Q(work_order__proposal__vendor__name__icontains=search) |
+            Q(work_order__proposal__campaign__name__icontains=search) |
+            Q(work_order__proposal__location__icontains=search) |
+            Q(created_by__username__icontains=search)
+        )
+
+    status = request.GET.get('status', '').strip()
+    if status and status != 'all':
+        claims = claims.filter(approval_status=status)
+
+    date_range = request.GET.get('date_range', '').strip()
+    if date_range:
+        parts = date_range.split(' to ')
+        if len(parts) == 2:
+            d_start = _parse_date(parts[0])
+            d_end = _parse_date(parts[1])
+            if d_start:
+                claims = claims.filter(created_at__date__gte=d_start)
+            if d_end:
+                claims = claims.filter(created_at__date__lte=d_end)
+        elif len(parts) == 1:
+            d_start = _parse_date(parts[0])
+            if d_start:
+                claims = claims.filter(created_at__date=d_start)
+
+    date_from = request.GET.get('date_from', '').strip()
+    if date_from:
+        d_from = _parse_date(date_from)
+        if d_from:
+            claims = claims.filter(created_at__date__gte=d_from)
+
+    date_to = request.GET.get('date_to', '').strip()
+    if date_to:
+        d_to = _parse_date(date_to)
+        if d_to:
+            claims = claims.filter(created_at__date__lte=d_to)
+
+    sort = request.GET.get('sort', '-created_at').strip()
+    if sort not in ('-created_at', 'created_at', 'payment_number', '-payment_number'):
+        sort = '-created_at'
+    claims = claims.order_by(sort)
+
+    return claims
 
 
 @role_required('can_add_payment')
@@ -52,11 +132,79 @@ def payment_list(request):
     Executive only sees payments they created themselves; anyone with
     broader responsibility (reviewer/admin/superuser) sees every payment,
     org-wide."""
-    claims = _detail_queryset().order_by('-created_at')
-    if is_personal_view(request.user):
-        claims = claims.filter(created_by=request.user)
+    claims = _filtered_payments(request)
+    querydict = request.GET.copy()
+    querydict.pop('page', None)
+    querystring = querydict.urlencode()
     page_obj = Paginator(claims, 25).get_page(request.GET.get('page'))
-    return render(request, 'payments/payment_list.html', {'claims': page_obj, 'page_obj': page_obj})
+    return render(request, 'payments/payment_list.html', {
+        'claims': page_obj,
+        'page_obj': page_obj,
+        'approval_choices': PaymentClaim.APPROVAL_CHOICES,
+        'querystring': querystring,
+    })
+
+
+@role_required('can_view_payments')
+def export_payments_excel(request):
+    """Exports payment claims matching the active filters as an Excel (.xlsx) file."""
+    claims = _filtered_payments(request)
+
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = 'Payments Records'
+
+    headers = [
+        'Payment #', 'Work Order #', 'Proposal #', 'Vendor',
+        'Campaign', 'Department', 'Stores / Location', 'Submitted By',
+        'Submission Date', 'Status', 'Remarks'
+    ]
+    header_fill = PatternFill(start_color='0D6EFD', end_color='0D6EFD', fill_type='solid')
+    header_font = Font(color='FFFFFF', bold=True)
+    for col_index, header in enumerate(headers, start=1):
+        cell = sheet.cell(row=1, column=col_index, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    row_index = 2
+    for claim in claims:
+        prop = getattr(claim.work_order, 'proposal', None) if claim.work_order else None
+        sheet.cell(row=row_index, column=1, value=claim.payment_number or '—')
+        sheet.cell(row=row_index, column=2, value=claim.work_order.po_number if claim.work_order else '—')
+        sheet.cell(row=row_index, column=3, value=prop.proposal_number if prop else '—')
+        sheet.cell(row=row_index, column=4, value=prop.vendor.name if prop and prop.vendor else '—')
+        sheet.cell(row=row_index, column=5, value=prop.campaign.name if prop and prop.campaign else '—')
+        sheet.cell(row=row_index, column=6, value=prop.department.name if prop and prop.department else '—')
+        sheet.cell(row=row_index, column=7, value=prop.location if prop else '—')
+        sheet.cell(row=row_index, column=8, value=claim.created_by.username if claim.created_by else '—')
+        sheet.cell(row=row_index, column=9, value=claim.created_at.strftime('%Y-%m-%d %H:%M') if claim.created_at else '—')
+
+        status_cell = sheet.cell(row=row_index, column=10, value=claim.stage_label)
+        status_cell.fill = PatternFill(
+            start_color=APPROVAL_FILL_COLORS.get(claim.approval_status, 'FFFFFF'),
+            end_color=APPROVAL_FILL_COLORS.get(claim.approval_status, 'FFFFFF'),
+            fill_type='solid',
+        )
+        sheet.cell(row=row_index, column=11, value=claim.remarks or '')
+        row_index += 1
+
+    column_widths = [18, 22, 18, 20, 20, 18, 22, 16, 20, 22, 30]
+    for col_index, width in enumerate(column_widths, start=1):
+        sheet.column_dimensions[get_column_letter(col_index)].width = width
+
+    sheet.freeze_panes = 'A2'
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(
+        buffer.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = 'attachment; filename="payments_records.xlsx"'
+    return response
 
 
 @role_required('can_edit_payment')

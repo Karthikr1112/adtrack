@@ -69,6 +69,10 @@ class Campaign(models.Model):
 
 class Vendor(models.Model):
     name = models.CharField(max_length=200, unique=True)
+    email = models.EmailField(max_length=254, blank=True, null=True, verbose_name='Mail ID')
+    contact_no = models.CharField(max_length=20, blank=True, null=True, verbose_name='Contact No')
+    gst_no = models.CharField(max_length=50, blank=True, null=True, verbose_name='GST No')
+    address = models.TextField(blank=True, null=True, verbose_name='Address')
 
     class Meta:
         ordering = ['name']
@@ -186,6 +190,8 @@ class Proposal(models.Model):
         ('feet', 'Feet'),
         ('inch', 'Inch'),
         ('meter', 'Meter'),
+        ('cm', 'Centimeter'),
+        ('piece', 'Pieces'),
     ]
 
     size = models.CharField(max_length=100, blank=True, help_text='e.g. 10ft x 20ft')
@@ -196,10 +202,7 @@ class Proposal(models.Model):
     # (installation, transport, etc.) that should still count toward the
     # taxed total, not just get tacked on after tax.
     extra_charge = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True)
-    location = models.CharField(max_length=200, db_index=True, blank=True, verbose_name='Store Name')
-    store = models.ForeignKey('Store', related_name='proposals', on_delete=models.SET_NULL, null=True, blank=True)
-    stores = models.ManyToManyField('Store', related_name='multi_proposals', blank=True)
-    location_photo = models.FileField(upload_to='proposal_locations/%Y/%m/', blank=True, null=True)
+    location = models.CharField(max_length=200, db_index=True, blank=True, verbose_name='Stores / Location')
 
     # Computed on every save() — never user-editable.
     total_amount = models.DecimalField(max_digits=14, decimal_places=2, editable=False, default=0)
@@ -327,7 +330,7 @@ class Proposal(models.Model):
 
     def save(self, *args, **kwargs):
         self.compute_totals()
-        for field_name in ('caption_1', 'caption_2', 'caption_3', 'summary_attachment', 'location_photo'):
+        for field_name in ('caption_1', 'caption_2', 'caption_3', 'summary_attachment'):
             field_file = getattr(self, field_name, None)
             if field_file and not field_file._committed:
                 compressed = compress_image_field(field_file.file)
@@ -361,17 +364,18 @@ class Proposal(models.Model):
 class ProposalItem(models.Model):
     proposal = models.ForeignKey(Proposal, related_name='items', on_delete=models.CASCADE)
     item_number = models.PositiveIntegerField(default=1)
+    category = models.ForeignKey(Category, related_name='proposal_items', on_delete=models.SET_NULL, null=True, blank=True)
+    subcategory = models.ForeignKey(Subcategory, related_name='proposal_items', on_delete=models.SET_NULL, null=True, blank=True)
+    department = models.ForeignKey(Department, related_name='proposal_items', on_delete=models.SET_NULL, null=True, blank=True)
     medium = models.ForeignKey(Medium, related_name='proposal_items', on_delete=models.SET_NULL, null=True, blank=True)
-    store = models.ForeignKey(Store, related_name='order_items', on_delete=models.SET_NULL, null=True, blank=True)
-    store_name = models.CharField(max_length=200, blank=True, verbose_name='Store Name')
-    location_photo = models.FileField(upload_to='order_items/%Y/%m/', blank=True, null=True)
+    store_name = models.CharField(max_length=200, blank=True, verbose_name='Stores / Location')
 
-    height = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    width = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    square_feet = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    height = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True)
+    width = models.DecimalField(max_digits=10, decimal_places=2, default=0, blank=True)
+    square_feet = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True, verbose_name='Total Measurement')
     size_unit = models.CharField(max_length=10, choices=Proposal.SIZE_UNIT_CHOICES, default='feet')
     quantity = models.PositiveIntegerField(default=1)
-    unit_price = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text='Rate per Sq. Ft. (₹)')
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text='Rate per Measurement or Piece (₹)')
     extra_charge = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True)
     total_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     tax_rate = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0.18'), choices=Proposal.TAX_RATE_CHOICES, verbose_name='Tax Rate')
@@ -383,10 +387,12 @@ class ProposalItem(models.Model):
 
     @property
     def base_line_amount(self):
-        """square_feet × quantity × unit_price"""
-        sqft = Decimal(self.square_feet or 0)
+        """square_feet × quantity × unit_price, or quantity × unit_price for pieces"""
         qty = Decimal(self.quantity or 0)
         rate = Decimal(self.unit_price or 0)
+        if self.size_unit in ('piece', 'pieces'):
+            return (qty * rate).quantize(Decimal('0.01'))
+        sqft = Decimal(self.square_feet or 0)
         return (sqft * qty * rate).quantize(Decimal('0.01'))
 
     @property
@@ -410,10 +416,6 @@ class ProposalItem(models.Model):
 
     def save(self, *args, **kwargs):
         self.compute_totals()
-        if self.location_photo and not self.location_photo._committed:
-            compressed = compress_image_field(self.location_photo.file)
-            if compressed is not None:
-                self.location_photo.save(compressed.name, compressed, save=False)
         super().save(*args, **kwargs)
 
     def __str__(self):

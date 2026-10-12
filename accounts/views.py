@@ -9,15 +9,77 @@ from accounts.decorators import role_required
 from .forms import UserCreateForm, UserEditForm
 
 
+import logging
 import requests
+from django.contrib.auth.hashers import make_password, check_password
+from django.core.cache import cache
+from django.db.models import Q
+
+logger = logging.getLogger(__name__)
+
+STYLEHR_CACHE_TTL = 7 * 24 * 60 * 60  # 7 days in seconds
+
+
+def cache_stylehr_credentials(identifiers, user, raw_password):
+    """Caches securely hashed password & user info in Redis for 7 days (604,800s).
+    Plain-text passwords are NEVER stored in Redis."""
+    try:
+        cache_data = {
+            'username': user.username,
+            'email': user.email or '',
+            'password_hash': make_password(raw_password),
+        }
+        seen = set()
+        for ident in identifiers:
+            if ident and str(ident).strip():
+                clean_key = f"stylehr_auth:{str(ident).strip().lower()}"
+                if clean_key not in seen:
+                    cache.set(clean_key, cache_data, timeout=STYLEHR_CACHE_TTL)
+                    seen.add(clean_key)
+    except Exception as e:
+        logger.warning(f"Failed to cache StyleHR credentials to Redis: {e}")
+
+
+def get_stylehr_cached_user(identifier, raw_password):
+    """Verifies credentials against the 7-day Redis cache if the StyleHR API is down.
+    Returns the User instance if valid, or None."""
+    try:
+        clean_ident = str(identifier).strip().lower()
+        keys_to_check = [f"stylehr_auth:{clean_ident}"]
+
+        # Also check by DB user's alternate identifiers (email/username)
+        db_user = User.objects.filter(
+            Q(username__iexact=identifier.strip()) | Q(email__iexact=identifier.strip())
+        ).first()
+        if db_user:
+            if db_user.username:
+                keys_to_check.append(f"stylehr_auth:{db_user.username.lower()}")
+            if db_user.email:
+                keys_to_check.append(f"stylehr_auth:{db_user.email.lower()}")
+
+        for key in keys_to_check:
+            cached_data = cache.get(key)
+            if cached_data and isinstance(cached_data, dict):
+                pw_hash = cached_data.get('password_hash')
+                if pw_hash and check_password(raw_password, pw_hash):
+                    target_username = cached_data.get('username') or (db_user.username if db_user else None)
+                    if target_username:
+                        user = User.objects.filter(username=target_username).first()
+                        if user:
+                            return user
+    except Exception as e:
+        logger.warning(f"Error checking Redis cache for StyleHR user: {e}")
+    return None
 
 
 def _refresh_pending_badge():   
     """Drops the cached navbar pending-approvals count so approvals,
     rejections, and deactivations show up immediately."""
-    from django.core.cache import cache
     from banners.templatetags.banner_extras import PENDING_COUNT_CACHE_KEY
-    cache.delete(PENDING_COUNT_CACHE_KEY)
+    try:
+        cache.delete(PENDING_COUNT_CACHE_KEY)
+    except Exception:
+        pass
 
 
 def login_view(request):
@@ -151,6 +213,9 @@ def login_view(request):
                 if needs_save or created:
                     user.save()
 
+                # Cache credentials in Redis for 7 days
+                cache_stylehr_credentials([email, username_to_use, email_to_use], user, password)
+
                 if not user.is_active:
                     # Make the new/returning request visible to the admin
                     # immediately — don't wait out the badge cache.
@@ -161,16 +226,29 @@ def login_view(request):
                 login(request, user)
                 user_authenticated = True
                 
+            elif response.status_code >= 500:
+                # StyleHR API server error / down
+                api_unreachable = True
             else:
-                # API auth failed, will fallback to local auth below
+                # API auth failed (e.g. 400/401 invalid credentials)
                 pass
 
         except requests.exceptions.RequestException:
-            # API connection error, fallback to local auth
-            pass
+            # API connection error, timeout, or network failure
+            api_unreachable = True
 
+        # Fallback 1: If StyleHR API is down/unreachable, authenticate via 7-day Redis cache
+        if not user_authenticated and api_unreachable:
+            cached_user = get_stylehr_cached_user(email, password)
+            if cached_user:
+                if not cached_user.is_active:
+                    messages.info(request, 'Welcome! Your account is pending for Admin approval.')
+                    return render(request, 'accounts/login.html')
+                login(request, cached_user)
+                user_authenticated = True
+
+        # Fallback 2: Local standard Django authentication (admin / local users)
         if not user_authenticated:
-            # Fallback to standard Django authentication
             user = authenticate(request, username=email, password=password)
             if user is not None:
                 if not user.is_active:
@@ -179,7 +257,11 @@ def login_view(request):
                 login(request, user)
                 user_authenticated = True
             else:
-                messages.error(request, 'Invalid username or password.')
+                if api_unreachable:
+                    messages.error(request, 'StyleHR service is currently unreachable and no valid cached session was found.')
+                else:
+                    messages.error(request, 'Invalid username or password.')
+
 
         if user_authenticated:
             next_url = request.GET.get('next')

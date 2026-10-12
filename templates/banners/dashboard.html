@@ -5,68 +5,6 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <style>
-/* Custom flatpickr styling to match screen design */
-.flatpickr-calendar {
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 1rem !important;
-    font-family: 'Inter', sans-serif !important;
-    padding: 8px !important;
-    background: #ffffff !important;
-    z-index: 9999 !important;
-}
-.flatpickr-day.selected, 
-.flatpickr-day.startRange, 
-.flatpickr-day.endRange, 
-.flatpickr-day.selected.inRange, 
-.flatpickr-day.startRange.inRange, 
-.flatpickr-day.endRange.inRange, 
-.flatpickr-day.selected:focus, 
-.flatpickr-day.startRange:focus, 
-.flatpickr-day.endRange:focus, 
-.flatpickr-day.selected:hover, 
-.flatpickr-day.startRange:hover, 
-.flatpickr-day.endRange:hover {
-    background: #0d6efd !important;
-    border-color: #0d6efd !important;
-    color: #ffffff !important;
-}
-.flatpickr-day.inRange {
-    background: rgba(13, 110, 253, 0.08) !important;
-    border-color: transparent !important;
-    box-shadow: -5px 0 0 rgba(13, 110, 253, 0.08), 5px 0 0 rgba(13, 110, 253, 0.08) !important;
-    border-radius: 0 !important;
-}
-.flatpickr-day.startRange {
-    border-top-left-radius: 50px !important;
-    border-bottom-left-radius: 50px !important;
-}
-.flatpickr-day.endRange {
-    border-top-right-radius: 50px !important;
-    border-bottom-right-radius: 50px !important;
-}
-.flatpickr-months .flatpickr-month {
-    color: #1e293b !important;
-    font-weight: 700 !important;
-}
-.flatpickr-current-month .flatpickr-monthDropdown-months {
-    font-weight: 700 !important;
-}
-.flatpickr-current-month input.cur-year {
-    font-weight: 700 !important;
-}
-.flatpickr-day {
-    border-radius: 50px !important;
-    font-weight: 500 !important;
-}
-.flatpickr-day.flatpickr-disabled, 
-.flatpickr-day.flatpickr-disabled:hover {
-    color: #cbd5e1 !important;
-}
-.flatpickr-weekday {
-    font-weight: 600 !important;
-    color: #64748b !important;
-}
 /* Topbar filter inputs — slimmer height to fit inside header */
 .topbar-filter .form-control,
 .topbar-filter .form-select {

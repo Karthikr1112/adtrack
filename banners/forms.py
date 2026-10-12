@@ -88,28 +88,20 @@ class BannerForm(BootstrapFormMixin, forms.ModelForm):
         queryset=None, required=True, empty_label='Select a vendor',
     )
     category = forms.ModelChoiceField(
-        queryset=None, required=True, empty_label='Select a category',
+        queryset=None, required=False, empty_label='Select a category',
     )
     subcategory = forms.ModelChoiceField(
-        queryset=None, required=True, empty_label='Select a subcategory',
+        queryset=None, required=False, empty_label='Select a subcategory',
     )
     department = forms.ModelChoiceField(
-        queryset=None, required=True, empty_label='Select a department',
+        queryset=None, required=False, empty_label='Select a department',
     )
     start_date = forms.DateField(required=True, widget=forms.DateInput(attrs={'type': 'date'}))
     end_date = forms.DateField(required=True, widget=forms.DateInput(attrs={'type': 'date'}))
 
-    store = forms.ModelChoiceField(
-        queryset=None, required=False, empty_label='Select a store',
-        label='Select Store (Dropdown)',
-    )
     location = forms.CharField(
-        required=False, label='Store Name',
-        widget=forms.TextInput(attrs={'placeholder': 'Enter store name'}),
-    )
-    location_photo = forms.FileField(
-        required=False, label='Store / Location Image (Optional)',
-        widget=forms.FileInput(attrs={'accept': 'image/*,application/pdf'}),
+        required=False, label='Stores / Location',
+        widget=forms.TextInput(attrs={'placeholder': 'Enter stores / location'}),
     )
 
     tax_rate = forms.TypedChoiceField(
@@ -151,31 +143,22 @@ class BannerForm(BootstrapFormMixin, forms.ModelForm):
         model = Proposal
         fields = [
             'campaign', 'vendor', 'start_date', 'end_date', 'category', 'subcategory', 'department',
-            'store', 'location', 'location_photo', 'caption_1', 'caption_2', 'caption_3', 'summary_attachment', 'remarks',
+            'location', 'caption_1', 'caption_2', 'caption_3', 'summary_attachment', 'remarks',
             'tax_rate',
         ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from .models import Campaign, Vendor, Category, Subcategory, Department, Store
+        from .models import Campaign, Vendor, Category, Subcategory, Department
         self.fields['campaign'].queryset = Campaign.objects.all()
         self.fields['vendor'].queryset = Vendor.objects.all()
         self.fields['category'].queryset = Category.objects.all()
         self.fields['subcategory'].queryset = Subcategory.objects.all()
         self.fields['department'].queryset = Department.objects.all()
-        self.fields['store'].queryset = Store.objects.all()
 
         if self.instance and self.instance.pk:
-            if self.instance.store_id:
-                self.fields['store'].initial = self.instance.store_id
             if self.instance.tax_rate is not None:
                 self.fields['tax_rate'].initial = self.instance.tax_rate
-
-    def clean_location_photo(self):
-        f = self.cleaned_data.get('location_photo')
-        if f:
-            validate_caption_file(f)
-        return f
 
     def clean_caption_1(self):
         f = self.cleaned_data.get('caption_1')
@@ -215,6 +198,9 @@ class BannerForm(BootstrapFormMixin, forms.ModelForm):
             self.add_error('end_date', 'End date cannot be before start date.')
 
         # Parse & validate dynamic order items from POST data
+        category_ids = self.data.getlist('item_category')
+        subcategory_ids = self.data.getlist('item_subcategory')
+        department_ids = self.data.getlist('item_department')
         store_names = self.data.getlist('item_store_name')
         medium_ids = self.data.getlist('item_medium')
         heights = self.data.getlist('item_height')
@@ -225,21 +211,31 @@ class BannerForm(BootstrapFormMixin, forms.ModelForm):
         extra_charges = self.data.getlist('item_extra_charge')
         tax_rates = self.data.getlist('item_tax_rate')
 
-        num_items = max(len(heights), len(widths), len(quantities), len(unit_prices), len(store_names), len(tax_rates))
+        num_items = max(len(heights), len(widths), len(quantities), len(unit_prices), len(store_names), len(category_ids), len(subcategory_ids), len(department_ids), len(tax_rates))
         if num_items == 0:
             self.add_error(None, 'At least one order item is required in Sizing & Pricing.')
             return cleaned
 
-        selected_store = cleaned.get('store')
         cleaned_items = []
         for i in range(num_items):
+            cat_str = category_ids[i].strip() if i < len(category_ids) else ''
+            subcat_str = subcategory_ids[i].strip() if i < len(subcategory_ids) else ''
+            dept_str = department_ids[i].strip() if i < len(department_ids) else ''
+
+            if not cat_str:
+                self.add_error(None, f'Order #{i+1}: Category is required.')
+            if not subcat_str:
+                self.add_error(None, f'Order #{i+1}: Subcategory is required.')
+            if not dept_str:
+                self.add_error(None, f'Order #{i+1}: Department is required.')
+
+            cat_id = int(cat_str) if cat_str.isdigit() else None
+            subcat_id = int(subcat_str) if subcat_str.isdigit() else None
+            dept_id = int(dept_str) if dept_str.isdigit() else None
+
             s_name = store_names[i].strip() if i < len(store_names) else ''
-
-            if not s_name and selected_store:
-                s_name = selected_store.name
-
             if not s_name:
-                self.add_error(None, f'Order #{i+1}: Store Name is required.')
+                self.add_error(None, f'Order #{i+1}: Stores / Location is required.')
 
             h_str = heights[i].strip() if i < len(heights) else ''
             w_str = widths[i].strip() if i < len(widths) else ''
@@ -250,21 +246,33 @@ class BannerForm(BootstrapFormMixin, forms.ModelForm):
             ec_str = extra_charges[i].strip() if i < len(extra_charges) else '0'
             tax_rate_str = tax_rates[i].strip() if i < len(tax_rates) else '0.18'
 
-            try:
-                h = Decimal(h_str)
-                if h <= 0:
-                    raise ValueError
-            except (ValueError, TypeError, DecimalException):
-                self.add_error(None, f'Order #{i+1}: Height must be a positive number.')
-                continue
+            is_piece = unit in ('piece', 'pieces')
 
-            try:
-                w = Decimal(w_str)
-                if w <= 0:
-                    raise ValueError
-            except (ValueError, TypeError, DecimalException):
-                self.add_error(None, f'Order #{i+1}: Width must be a positive number.')
-                continue
+            if is_piece:
+                try:
+                    h = Decimal(h_str) if h_str else Decimal('0.00')
+                except (ValueError, TypeError, DecimalException):
+                    h = Decimal('0.00')
+                try:
+                    w = Decimal(w_str) if w_str else Decimal('0.00')
+                except (ValueError, TypeError, DecimalException):
+                    w = Decimal('0.00')
+            else:
+                try:
+                    h = Decimal(h_str)
+                    if h <= 0:
+                        raise ValueError
+                except (ValueError, TypeError, DecimalException):
+                    self.add_error(None, f'Order #{i+1}: Height must be a positive number.')
+                    continue
+
+                try:
+                    w = Decimal(w_str)
+                    if w <= 0:
+                        raise ValueError
+                except (ValueError, TypeError, DecimalException):
+                    self.add_error(None, f'Order #{i+1}: Width must be a positive number.')
+                    continue
 
             try:
                 qty = int(q_str)
@@ -296,12 +304,16 @@ class BannerForm(BootstrapFormMixin, forms.ModelForm):
                 item_rate = Decimal('0.18')
 
             sqft = (h * w).quantize(Decimal('0.01'))
-            base_total = ((sqft * Decimal(qty) * price) + extra).quantize(Decimal('0.01'))
+            base_line = Decimal(qty) * price if is_piece else (sqft * Decimal(qty) * price)
+            base_total = (base_line + extra).quantize(Decimal('0.01'))
             item_tax = (base_total * item_rate).quantize(Decimal('0.01'))
             item_grand = base_total + item_tax
 
             cleaned_items.append({
                 'item_number': i + 1,
+                'category_id': cat_id,
+                'subcategory_id': subcat_id,
+                'department_id': dept_id,
                 'store_name': s_name,
                 'medium_id': int(med_id) if med_id and med_id.isdigit() else None,
                 'height': h,
@@ -331,11 +343,11 @@ class BannerForm(BootstrapFormMixin, forms.ModelForm):
         if tax_rate_val is not None:
             instance.tax_rate = Decimal(str(tax_rate_val))
 
-        store = self.cleaned_data.get('store')
-        instance.store = store
-
         if hasattr(self, 'cleaned_items') and self.cleaned_items:
             first_item = self.cleaned_items[0]
+            instance.category_id = first_item.get('category_id') or instance.category_id
+            instance.subcategory_id = first_item.get('subcategory_id') or instance.subcategory_id
+            instance.department_id = first_item.get('department_id') or instance.department_id
             instance.size = f"{first_item['height']} x {first_item['width']}"
             instance.size_unit = first_item['size_unit']
             instance.quantity = sum(item['quantity'] for item in self.cleaned_items)
@@ -353,21 +365,19 @@ class BannerForm(BootstrapFormMixin, forms.ModelForm):
             store_names = [it['store_name'] for it in self.cleaned_items if it.get('store_name')]
             if store_names:
                 instance.location = ", ".join(store_names) if len(store_names) <= 3 else f"{store_names[0]} (+{len(store_names)-1} more)"
-            elif store:
-                instance.location = store.name
 
         if commit:
             instance.save()
             self.save_m2m()
-            if store:
-                instance.stores.add(store)
             if hasattr(self, 'cleaned_items') and self.cleaned_items:
                 instance.items.all().delete()
                 for it in self.cleaned_items:
                     ProposalItem.objects.create(
                         proposal=instance,
                         item_number=it['item_number'],
-                        store=store,
+                        category_id=it.get('category_id'),
+                        subcategory_id=it.get('subcategory_id'),
+                        department_id=it.get('department_id'),
                         store_name=it['store_name'],
                         medium_id=it['medium_id'],
                         height=it['height'],
@@ -383,5 +393,5 @@ class BannerForm(BootstrapFormMixin, forms.ModelForm):
                         grand_total=it['grand_total'],
                     )
                 instance.compute_totals()
-                instance.save(update_fields=['total_amount', 'tax_amount', 'grand_total', 'tax_rate'])
+                instance.save(update_fields=['total_amount', 'tax_amount', 'grand_total', 'tax_rate', 'category', 'subcategory', 'department'])
         return instance

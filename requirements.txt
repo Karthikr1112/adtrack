@@ -54,3 +54,7 @@ PyYAML==6.0.3
 
 # Production Server (Linux)
 gunicorn==23.0.0
+
+# Redis Cache Backend
+redis==5.2.1
+
