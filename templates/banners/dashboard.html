@@ -260,12 +260,21 @@
     </div>
 
     <!-- Status Dropdown -->
-    <select name="status" class="form-select form-select-sm rounded-pill px-3" style="width: 160px; border-color: #dee2e6; color: #475569;">
+    <select name="status" class="form-select form-select-sm rounded-pill px-3" style="width: 150px; border-color: #dee2e6; color: #475569;">
         <option value="all" {% if selected_status == 'all' %}selected{% endif %}>All Statuses</option>
         {% for val, label in status_choices %}
             <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
     </select>
+
+    <!-- Store Dropdown -->
+    <select name="store" class="form-select form-select-sm rounded-pill px-3" style="width: 160px; border-color: #dee2e6; color: #475569;">
+        <option value="">All Stores</option>
+        {% for s in store_choices %}
+            <option value="{{ s.name }}" {% if selected_store == s.name %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+    </select>
+
 
     <!-- Filter Buttons -->
     <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold flex-shrink-0" style="height: 34px; font-size: 0.82rem;">Filter</button>

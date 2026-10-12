@@ -153,6 +153,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // above keeps working unchanged.
         if (window.Choices) {
             new Choices(workOrderSelect, {
+                allowHTML: false,
                 searchEnabled: true,
                 shouldSort: false,
                 itemSelectText: '',
@@ -160,6 +161,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 searchPlaceholderValue: 'Type to search work orders…',
             });
         }
+
         workOrderSelect.addEventListener('change', updateProposalNumber);
         updateProposalNumber();
     }

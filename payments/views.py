@@ -15,9 +15,11 @@ from django.db.models import Q
 from accounts.decorators import role_required
 from accounts.permissions import reviewable_stages, can_edit_record, is_personal_view
 from banners import workflow as proposal_workflow
+from banners.models import Store
 from .models import PaymentClaim
 from .forms import PaymentClaimForm
 from . import workflow
+
 
 APPROVAL_FILL_COLORS = {
     'in_review': 'FFF3CD',
@@ -86,11 +88,19 @@ def _filtered_payments(request):
         if d_from:
             claims = claims.filter(created_at__date__gte=d_from)
 
+    store = request.GET.get('store', '').strip()
+    if store:
+        claims = claims.filter(
+            Q(work_order__proposal__location__iexact=store) |
+            Q(work_order__proposal__items__store_name__iexact=store)
+        ).distinct()
+
     date_to = request.GET.get('date_to', '').strip()
     if date_to:
         d_to = _parse_date(date_to)
         if d_to:
             claims = claims.filter(created_at__date__lte=d_to)
+
 
     sort = request.GET.get('sort', '-created_at').strip()
     if sort not in ('-created_at', 'created_at', 'payment_number', '-payment_number'):
@@ -141,8 +151,10 @@ def payment_list(request):
         'claims': page_obj,
         'page_obj': page_obj,
         'approval_choices': PaymentClaim.APPROVAL_CHOICES,
+        'store_choices': Store.objects.all(),
         'querystring': querystring,
     })
+
 
 
 @role_required('can_view_payments')

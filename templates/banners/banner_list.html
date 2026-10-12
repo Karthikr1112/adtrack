@@ -72,14 +72,15 @@
                 </select>
             </div>
             <div class="col-6 col-md-1">
-                <label class="form-label small fw-semibold text-secondary mb-1">Sort By</label>
-                <select name="sort" class="form-select form-select-sm" style="background-color: #fafbfc;">
-                    <option value="-created_at" {% if request.GET.sort == '-created_at' or not request.GET.sort %}selected{% endif %}>Newest</option>
-                    <option value="created_at" {% if request.GET.sort == 'created_at' %}selected{% endif %}>Oldest</option>
-                    <option value="-grand_total" {% if request.GET.sort == '-grand_total' %}selected{% endif %}>Amount</option>
-                    <option value="location" {% if request.GET.sort == 'location' %}selected{% endif %}>Location</option>
+                <label class="form-label small fw-semibold text-secondary mb-1">Store</label>
+                <select name="store" class="form-select form-select-sm" style="background-color: #fafbfc;">
+                    <option value="">All Stores</option>
+                    {% for s in store_choices %}
+                    <option value="{{ s.name }}" {% if request.GET.store == s.name %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
                 </select>
             </div>
+
             <div class="col-6 col-md-1 d-flex gap-1">
                 <button type="submit" class="btn btn-primary btn-sm w-100 shadow-sm" title="Apply filters">
                     <i class="bi bi-funnel"></i>

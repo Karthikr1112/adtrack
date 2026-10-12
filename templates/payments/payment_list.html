@@ -59,15 +59,17 @@
                 </select>
             </div>
 
-            <!-- Sort By -->
+            <!-- Store -->
             <div class="col-6 col-md-2">
-                <label class="form-label small fw-semibold text-secondary mb-1">Sort By</label>
-                <select name="sort" class="form-select form-select-sm" style="background-color: #fafbfc;">
-                    <option value="-created_at" {% if request.GET.sort == '-created_at' or not request.GET.sort %}selected{% endif %}>Newest First</option>
-                    <option value="created_at" {% if request.GET.sort == 'created_at' %}selected{% endif %}>Oldest First</option>
-                    <option value="payment_number" {% if request.GET.sort == 'payment_number' %}selected{% endif %}>Payment # (A–Z)</option>
+                <label class="form-label small fw-semibold text-secondary mb-1">Store</label>
+                <select name="store" class="form-select form-select-sm" style="background-color: #fafbfc;">
+                    <option value="">All Stores</option>
+                    {% for s in store_choices %}
+                    <option value="{{ s.name }}" {% if request.GET.store == s.name %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
                 </select>
             </div>
+
 
             <!-- Buttons -->
             <div class="col-6 col-md-1 d-flex gap-1">

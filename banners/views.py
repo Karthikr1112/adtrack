@@ -138,6 +138,12 @@ def _filtered_banners(request):
         if d_from:
             queryset = queryset.filter(created_at__date__gte=d_from)
 
+    store = request.GET.get('store', '').strip()
+    if store:
+        queryset = queryset.filter(
+            Q(location__iexact=store) | Q(items__store_name__iexact=store)
+        ).distinct()
+
     date_to = request.GET.get('date_to', '').strip()
     if date_to:
         d_to = _parse_date(date_to)
@@ -169,10 +175,12 @@ class BannerListView(LoginRequiredMixin, ListView):
         context['vendor_choices'] = Vendor.objects.all()
         context['category_choices'] = Category.objects.all()
         context['department_choices'] = Department.objects.all()
+        context['store_choices'] = Store.objects.all()
         querydict = self.request.GET.copy()
         querydict.pop('page', None)
         context['querystring'] = querydict.urlencode()
         return context
+
 
 
 class BannerDetailView(LoginRequiredMixin, DetailView):
@@ -344,6 +352,7 @@ def dashboard(request):
     search_query = request.GET.get('q', '')
     date_range = request.GET.get('date_range', '')
     approval_filter = request.GET.get('status', 'all')
+    selected_store = request.GET.get('store', '').strip()
 
     start_date = None
     end_date = None
@@ -369,12 +378,17 @@ def dashboard(request):
 
     if search_query:
         banners = banners.filter(location__icontains=search_query)
+    if selected_store:
+        banners = banners.filter(
+            Q(location__iexact=selected_store) | Q(items__store_name__iexact=selected_store)
+        ).distinct()
     if start_date:
         banners = banners.filter(created_at__date__gte=start_date)
     if end_date:
         banners = banners.filter(created_at__date__lte=end_date)
     if approval_filter and approval_filter != 'all':
         banners = banners.filter(approval_status=approval_filter)
+
 
     # "Total Grand Total" is real, committed spend — only proposals that
     # actually cleared the full approval chain count. A rejected or
@@ -522,6 +536,11 @@ def dashboard(request):
         payment_claims = payment_claims.filter(created_by=request.user)
     if search_query:
         payment_claims = payment_claims.filter(work_order__proposal__location__icontains=search_query)
+    if selected_store:
+        payment_claims = payment_claims.filter(
+            Q(work_order__proposal__location__iexact=selected_store) |
+            Q(work_order__proposal__items__store_name__iexact=selected_store)
+        ).distinct()
     if start_date:
         payment_claims = payment_claims.filter(created_at__date__gte=start_date)
     if end_date:
@@ -583,7 +602,10 @@ def dashboard(request):
         'search_query': search_query,
         'date_range': date_range,
         'selected_status': approval_filter,
+        'selected_store': selected_store,
+        'store_choices': Store.objects.all(),
         'status_choices': Proposal.APPROVAL_CHOICES,
+
 
         'chart_vendor_labels': json.dumps(category_labels),
         'chart_vendor_data': json.dumps(category_data),
@@ -1020,6 +1042,13 @@ def _filtered_work_orders(request):
     if vendor_id:
         orders = orders.filter(proposal__vendor_id=vendor_id)
 
+    store = request.GET.get('store', '').strip()
+    if store:
+        orders = orders.filter(
+            Q(proposal__location__iexact=store) |
+            Q(proposal__items__store_name__iexact=store)
+        ).distinct()
+
     date_range = request.GET.get('date_range', '').strip()
     if date_range:
         parts = date_range.split(' to ')
@@ -1078,8 +1107,10 @@ def work_order_list(request):
         'page_obj': page_obj,
         'campaign_choices': Campaign.objects.all(),
         'vendor_choices': Vendor.objects.all(),
+        'store_choices': Store.objects.all(),
         'querystring': querystring,
     })
+
 
 
 @role_required('can_view_banners')
