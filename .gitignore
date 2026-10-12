@@ -78,3 +78,9 @@ $RECYCLE.BIN/
 # Logs
 *.log
 logs/
+
+# Redis & Cache persistence dumps (never commit memory dumps)
+dump.rdb
+*.rdb
+appendonlydir/
+*.aof
