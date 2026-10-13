@@ -31,6 +31,10 @@ def user_has_permission(user, codename):
     return codename in get_role_permissions(user)
 
 
+_STAGES_CACHE_ATTR = '_reviewable_stages_cache'
+_CAN_REVIEW_CACHE_ATTR = '_can_review_anything_cache'
+
+
 def reviewable_stages(user):
     """The set of WorkflowStep ids this user is allowed to act on — a step
     matches if the user's role is the one assigned to it on the Approval
@@ -38,15 +42,23 @@ def reviewable_stages(user):
     Superusers can act on every configured step."""
     if not user.is_authenticated:
         return frozenset()
+    stages = getattr(user, _STAGES_CACHE_ATTR, None)
+    if stages is not None:
+        return stages
+
     from .models import WorkflowStep
     if user.is_superuser:
-        return frozenset(WorkflowStep.objects.values_list('id', flat=True))
-    profile = getattr(user, 'profile', None)
-    if profile is None or profile.role_id is None:
-        return frozenset()
-    if not profile.role.can_approve_banners:
-        return frozenset()
-    return frozenset(WorkflowStep.objects.filter(role_id=profile.role_id).values_list('id', flat=True))
+        stages = frozenset(WorkflowStep.objects.values_list('id', flat=True))
+    else:
+        profile = getattr(user, 'profile', None)
+        if profile is None or profile.role_id is None:
+            stages = frozenset()
+        elif not profile.role.can_approve_banners:
+            stages = frozenset()
+        else:
+            stages = frozenset(WorkflowStep.objects.filter(role_id=profile.role_id).values_list('id', flat=True))
+    setattr(user, _STAGES_CACHE_ATTR, stages)
+    return stages
 
 
 def can_review_anything(user):
@@ -56,14 +68,21 @@ def can_review_anything(user):
     Proposal Approvals and Payment Approvals nav links and pages."""
     if not user.is_authenticated:
         return False
+    val = getattr(user, _CAN_REVIEW_CACHE_ATTR, None)
+    if val is not None:
+        return val
+
     if user.is_superuser:
-        return True
-    if user_has_permission(user, 'can_approve_banners'):
-        return True
-    if bool(reviewable_stages(user)):
-        return True
-    from banners.models import Proposal
-    return Proposal.objects.filter(final_approver=user).exists()
+        val = True
+    elif user_has_permission(user, 'can_approve_banners'):
+        val = True
+    elif bool(reviewable_stages(user)):
+        val = True
+    else:
+        from banners.models import Proposal
+        val = Proposal.objects.filter(final_approver=user).exists()
+    setattr(user, _CAN_REVIEW_CACHE_ATTR, val)
+    return val
 
 
 def is_admin_user(user):

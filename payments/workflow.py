@@ -35,18 +35,19 @@ def resubmit(claim, actor):
     ApprovalAction.objects.create(payment_claim=claim, stage='Executive', action='resubmitted', actor=actor)
 
 
-def apply_action(claim, step, action, actor, comment=''):
+def apply_action(claim, step, action, actor, comment='', is_final_approval=False):
     """Applies a reviewer's decision. `step` is the WorkflowStep the
     claim was at when the decision was made (the view must have already
     confirmed this matches claim.current_step and that `actor`'s role
     matches it before calling this)."""
+    stage_name = f'{step.role.name} (Final Approval)' if (is_final_approval and step) else (step.role.name if step else 'Final Approval')
     ApprovalAction.objects.create(
-        payment_claim=claim, stage=step.role.name, workflow_step=step, action=action, actor=actor, comment=comment,
+        payment_claim=claim, stage=stage_name, workflow_step=step, action=action, actor=actor, comment=comment,
     )
 
     if action == 'approve':
         upcoming = next_step(step)
-        if upcoming is None or (claim.final_approver and step.order >= 4):
+        if upcoming is None or is_final_approval or (claim.final_approver and step.order >= 4):
             claim.approval_status = 'approved'
             claim.current_step = None
             claim.save(update_fields=['approval_status', 'current_step'])

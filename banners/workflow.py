@@ -24,20 +24,22 @@ def first_step():
     return WorkflowStep.objects.select_related('role').order_by('order').first()
 
 
-def next_step(step):
+def next_step(step, steps=None):
     """The step after `step`, or None if `step` is the last one (meaning
     the document is now fully approved)."""
-    steps = ordered_steps()
+    if steps is None:
+        steps = ordered_steps()
     idx = next((i for i, s in enumerate(steps) if s.id == step.id), None)
     if idx is None or idx + 1 >= len(steps):
         return None
     return steps[idx + 1]
 
 
-def previous_step(step):
+def previous_step(step, steps=None):
     """The step before `step`, or None if `step` is the first one (meaning
     a rework here goes all the way back to the creator)."""
-    steps = ordered_steps()
+    if steps is None:
+        steps = ordered_steps()
     idx = next((i for i, s in enumerate(steps) if s.id == step.id), None)
     if not idx:
         return None
@@ -99,23 +101,33 @@ def resubmit(proposal, actor):
     ApprovalAction.objects.create(proposal=proposal, stage='Executive', action='resubmitted', actor=actor)
 
 
-def apply_action(proposal, step, action, actor, comment='', attachment=None):
+def apply_action(proposal, step, action, actor, comment='', attachment=None, is_final_approval=False):
     """Applies a reviewer's decision. If proposal.awaiting_final_approver is True,
     this is the assigned final approver making the final decision. Otherwise,
     `step` is the WorkflowStep the proposal was at."""
-    stage_name = 'Final Approval' if proposal.awaiting_final_approver else (step.role.name if step else 'Final Approval')
+    if proposal.awaiting_final_approver:
+        stage_name = 'Final Approval'
+    elif is_final_approval and step:
+        stage_name = f'{step.role.name} (Final Approval)'
+    elif step:
+        stage_name = step.role.name
+    else:
+        stage_name = 'Final Approval'
+
     ApprovalAction.objects.create(
         proposal=proposal, stage=stage_name, workflow_step=step, action=action, actor=actor,
         comment=comment, attachment=attachment,
     )
 
     if action == 'approve':
-        if proposal.awaiting_final_approver:
-            # Final approver approved -> Work order is generated!
+        if proposal.awaiting_final_approver or is_final_approval:
+            # Final approver approved OR Level 3 chosen as final approval -> Work order is generated!
             proposal.approval_status = 'approved'
             proposal.current_step = None
             proposal.awaiting_final_approver = False
-            proposal.save(update_fields=['approval_status', 'current_step', 'awaiting_final_approver'])
+            if is_final_approval:
+                proposal.final_approver = None
+            proposal.save(update_fields=['approval_status', 'current_step', 'awaiting_final_approver', 'final_approver'])
             WorkOrder.objects.get_or_create(proposal=proposal)
         else:
             upcoming = next_step(step)

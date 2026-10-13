@@ -48,7 +48,7 @@ def _logo_data_uri():
 
 def _detail_queryset():
     return Proposal.objects.select_related(
-        'created_by', 'campaign', 'vendor', 'category', 'subcategory', 'department', 'current_step__role'
+        'created_by', 'campaign', 'vendor', 'category', 'subcategory', 'department', 'current_step__role', 'final_approver'
     ).prefetch_related('items__category', 'items__subcategory', 'items__department', 'items__medium')
 
 
@@ -372,7 +372,7 @@ def dashboard(request):
     # applied to the Proposals list/export and Payments Records pages.
     personal_view = is_personal_view(request.user)
 
-    banners = Proposal.objects.select_related('created_by', 'campaign', 'category', 'department', 'current_step__role')
+    banners = Proposal.objects.select_related('created_by', 'campaign', 'category', 'department', 'current_step__role', 'final_approver')
     if personal_view:
         banners = banners.filter(created_by=request.user)
 
@@ -473,8 +473,9 @@ def dashboard(request):
     status_data = []
     status_colors = []
 
+    bucket_counts = dict(banners.filter(approval_status__in=('rework', 'approved', 'rejected')).values_list('approval_status').annotate(c=Count('id')))
     for bucket in ('rework', 'approved', 'rejected'):
-        count = banners.filter(approval_status=bucket).count()
+        count = bucket_counts.get(bucket, 0)
         counts_by_status[bucket] = count
         if count:
             status_labels.append(status_display_map[bucket])
@@ -554,8 +555,9 @@ def dashboard(request):
     payment_status_colors = []
     payment_counts_by_status = {}
 
+    payment_bucket_counts = dict(payment_claims.filter(approval_status__in=('rework', 'approved', 'rejected')).values_list('approval_status').annotate(c=Count('id')))
     for bucket in ('rework', 'approved', 'rejected'):
-        count = payment_claims.filter(approval_status=bucket).count()
+        count = payment_bucket_counts.get(bucket, 0)
         payment_counts_by_status[bucket] = count
         if count:
             payment_status_labels.append(payment_status_display_map[bucket])
@@ -581,11 +583,11 @@ def dashboard(request):
     if my_stages:
         attention_proposals = list(
             Proposal.objects.filter(current_step_id__in=my_stages)
-            .select_related('campaign', 'current_step__role').order_by('-created_at')[:5]
+            .select_related('campaign', 'current_step__role', 'final_approver').order_by('-created_at')[:5]
         )
         attention_payments = list(
             PaymentClaim.objects.filter(current_step_id__in=my_stages)
-            .select_related('work_order', 'work_order__proposal', 'current_step__role').order_by('-created_at')[:5]
+            .select_related('work_order', 'work_order__proposal', 'current_step__role', 'final_approver').order_by('-created_at')[:5]
         )
 
     context = {
@@ -856,12 +858,10 @@ def proposal_review(request, pk):
     """The 'summary box before approval' screen — full proposal details,
     the complete approval history (so a later reviewer sees earlier
     comments), and the step-appropriate action buttons with a comment box."""
-    banner = get_object_or_404(
-        Proposal.objects.select_related('created_by', 'campaign', 'vendor', 'category', 'subcategory', 'department', 'current_step__role', 'final_approver'),
-        pk=pk,
-    )
+    banner = get_object_or_404(_detail_queryset(), pk=pk)
     step = banner.current_step
     my_steps = reviewable_stages(request.user)
+    all_steps = workflow.ordered_steps()
 
     if banner.approval_status == 'in_review':
         if banner.awaiting_final_approver:
@@ -876,11 +876,11 @@ def proposal_review(request, pk):
     can_rework = banner.awaiting_final_approver or (bool(step) and step.allow_rework)
     can_reject = banner.awaiting_final_approver or (bool(step) and getattr(step, 'can_reject', step.order > 2))
     attachment_required_on_approve = (not banner.awaiting_final_approver) and bool(step) and step.require_attachment_on_approve
-    has_next_step = (not banner.awaiting_final_approver) and bool(step) and workflow.next_step(step) is not None
-    is_first_step = (not banner.awaiting_final_approver) and bool(step) and workflow.previous_step(step) is None
+    has_next_step = (not banner.awaiting_final_approver) and bool(step) and workflow.next_step(step, all_steps) is not None
+    is_first_step = (not banner.awaiting_final_approver) and bool(step) and workflow.previous_step(step, all_steps) is None
     is_next_level = (not banner.awaiting_final_approver) and bool(step) and step.order in (1, 2)
     is_level_3 = (not banner.awaiting_final_approver) and bool(step) and step.order == 3
-    is_final_step = banner.awaiting_final_approver or (bool(step) and (step.order > 3 or (workflow.next_step(step) is None and not banner.final_approver)))
+    is_final_step = banner.awaiting_final_approver or (bool(step) and (step.order > 3 or (workflow.next_step(step, all_steps) is None and not banner.final_approver)))
 
     final_approver_users = []
     if is_level_3:
@@ -955,31 +955,46 @@ def banner_approve_action(request, pk, action):
                     return redirect('proposal_review', pk=banner.pk)
 
         approver_user = None
+        is_final_approval = False
         if not banner.awaiting_final_approver and action == 'approve' and step.order == 3:
-            final_approver_id = request.POST.get('final_approver')
-            if final_approver_id:
-                try:
-                    approver_user = User.objects.get(pk=final_approver_id, is_active=True)
-                    banner.final_approver = approver_user
-                    banner.save(update_fields=['final_approver'])
-                except User.DoesNotExist:
-                    messages.error(request, 'Selected final approver is invalid or inactive.')
-                    return redirect('proposal_review', pk=banner.pk)
-            else:
-                # If unselected, proceed with normal workflow (clear any previously assigned final approver)
+            approval_mode = request.POST.get('approval_mode', 'next_level')
+            if approval_mode == 'final_approve':
+                is_final_approval = True
                 if banner.final_approver_id is not None:
                     banner.final_approver = None
                     banner.save(update_fields=['final_approver'])
+            else:
+                final_approver_id = request.POST.get('final_approver')
+                if final_approver_id:
+                    try:
+                        approver_user = User.objects.get(pk=final_approver_id, is_active=True)
+                        banner.final_approver = approver_user
+                        banner.save(update_fields=['final_approver'])
+                    except User.DoesNotExist:
+                        messages.error(request, 'Selected final approver is invalid or inactive.')
+                        return redirect('proposal_review', pk=banner.pk)
+                else:
+                    # If unselected, proceed with normal workflow (clear any previously assigned final approver)
+                    if banner.final_approver_id is not None:
+                        banner.final_approver = None
+                        banner.save(update_fields=['final_approver'])
 
         was_awaiting_final = banner.awaiting_final_approver
         old_step = step
         old_final_approver_id = banner.final_approver_id
 
-        workflow.apply_action(banner, step, action, request.user, comment=comment, attachment=attachment if not was_awaiting_final else None)
+        workflow.apply_action(
+            banner, step, action, request.user,
+            comment=comment,
+            attachment=attachment if not was_awaiting_final else None,
+            is_final_approval=is_final_approval,
+        )
 
         if action == 'approve':
             if was_awaiting_final:
                 verb = 'fully approved and Work Order generated'
+            elif is_final_approval:
+                verb = 'approved as final level and Work Order generated'
             elif old_step.order in (1, 2):
                 upcoming = banner.current_step
                 verb = f'sent to the next level ({upcoming.role.name} review)' if upcoming else 'sent to the next level'

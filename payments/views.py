@@ -42,7 +42,7 @@ def _detail_queryset():
     return PaymentClaim.objects.select_related(
         'created_by', 'work_order', 'work_order__proposal', 'work_order__proposal__campaign',
         'work_order__proposal__vendor', 'work_order__proposal__category', 'work_order__proposal__department',
-        'current_step__role',
+        'current_step__role', 'final_approver',
     )
 
 
@@ -302,7 +302,7 @@ def payment_approvals(request):
         claims = PaymentClaim.objects.none()
 
     claims = claims.select_related(
-        'created_by', 'work_order', 'work_order__proposal', 'work_order__proposal__campaign', 'current_step__role'
+        'created_by', 'work_order', 'work_order__proposal', 'work_order__proposal__campaign', 'current_step__role', 'final_approver'
     ).order_by('current_step__order', '-created_at')
     page_obj = Paginator(claims, 25).get_page(request.GET.get('page'))
     return render(request, 'payments/payment_approvals.html', {'claims': page_obj, 'page_obj': page_obj})
@@ -316,15 +316,16 @@ def payment_review(request, pk):
     claim = get_object_or_404(_detail_queryset(), pk=pk)
     step = claim.current_step
     my_steps = reviewable_stages(request.user)
+    all_steps = proposal_workflow.ordered_steps()
 
     can_act = (step is not None) and ((step.id in my_steps) or request.user.is_superuser)
     can_rework = bool(step) and step.allow_rework
     can_reject = bool(step) and getattr(step, 'can_reject', step.order > 2)
-    has_next_step = bool(step) and proposal_workflow.next_step(step) is not None
-    is_first_step = bool(step) and proposal_workflow.previous_step(step) is None
+    has_next_step = bool(step) and proposal_workflow.next_step(step, all_steps) is not None
+    is_first_step = bool(step) and proposal_workflow.previous_step(step, all_steps) is None
     is_next_level = bool(step) and step.order in (1, 2)
     is_level_3 = bool(step) and step.order == 3
-    is_final_step = bool(step) and (step.order > 3 or proposal_workflow.next_step(step) is None)
+    is_final_step = bool(step) and (step.order > 3 or proposal_workflow.next_step(step, all_steps) is None)
 
     return render(request, 'payments/payment_review.html', {
         'claim': claim,
@@ -364,10 +365,18 @@ def payment_approve_action(request, pk, action):
         if action == 'reject' and not getattr(step, 'can_reject', step.order > 2):
             raise PermissionDenied("Step 1 and Step 2 do not have a reject option.")
 
-        workflow.apply_action(claim, step, action, request.user, comment=comment)
+        is_final_approval = False
+        if action == 'approve' and step.order == 3:
+            approval_mode = request.POST.get('approval_mode', 'next_level')
+            if approval_mode == 'final_approve':
+                is_final_approval = True
+
+        workflow.apply_action(claim, step, action, request.user, comment=comment, is_final_approval=is_final_approval)
 
         if action == 'approve':
-            if step.order in (1, 2):
+            if is_final_approval:
+                verb = 'approved as final level'
+            elif step.order in (1, 2):
                 upcoming = claim.current_step
                 verb = f'sent to the next level ({upcoming.role.name} review)' if upcoming else 'sent to the next level'
             elif step.order == 3:

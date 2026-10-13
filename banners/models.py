@@ -349,7 +349,7 @@ class Proposal(models.Model):
     def stage_label(self):
         """Human display label: 'Pending <Role> Review' or 'Pending Final Approval (<User>)' while in review."""
         if self.approval_status == 'in_review':
-            if self.awaiting_final_approver and self.final_approver:
+            if self.awaiting_final_approver and self.final_approver_id and self.final_approver:
                 name = self.final_approver.get_full_name() or self.final_approver.username
                 return f'Pending Final Approval ({name})'
             if self.current_step_id:
